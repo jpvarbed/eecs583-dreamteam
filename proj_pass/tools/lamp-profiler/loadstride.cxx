@@ -3,6 +3,7 @@
   Then this can be used to calculate the top stride values and stride differences...
 */
 
+#include <iostream>
 #include <vector>
 #include <utility>
 #include <map>
@@ -15,6 +16,7 @@ LoadStride::LoadStride(uint32_t load_id) {
   loadID = load_id;
   strideZeroCount = 0;
   strideZeroDifferenceCount = 0;
+  topStrideHolder = make_pair(-1, -1);
 }
 
 LoadStride::~LoadStride() {
@@ -22,6 +24,10 @@ LoadStride::~LoadStride() {
 
 void LoadStride::updateTopStrideValues(long value) {
   long count = strideValuesToCount[value];
+  if (count > topStrideHolder.second) {
+    topStrideHolder.first = value;
+    topStrideHolder.second = count;
+  }
   for (int i = 0; i < topStrideValues.size(); i++) {
     if (topStrideValues[i].first == value) {
       topStrideValues[i].second = count;

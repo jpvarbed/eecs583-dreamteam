@@ -1,11 +1,16 @@
 #include <stdio.h>
 
 int main(){
-    int i = 0;
-    int j = 0;
-    int a[2] = {1, 2};
-    for(;i<1; i++)
-        j = a[0];
-    printf("j is %d\n", j);
+    int a[100];
+    int z;
+    for(z=0;z<100; z++)
+        a[z] = 1;
+    int offset;
+    int p;
+    for(z=1;z<50;z++) {
+      offset = -5;
+      if (z % 2) offset = 5;
+      p = a[50 + offset];
+    }
     return 0;
 }

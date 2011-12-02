@@ -24,12 +24,20 @@ class LoadStride {
       return &topStrideValues;
     }
 
+    pair<long, long> *getTopStrideValue() {
+      return &topStrideHolder; // pair of <value, count>
+    }
+
     vector< pair<long, long> > *getTopStrideDifferenceValues() {
       return &topStrideDifferenceValues;
     }
  
     uint32_t getLoadID() {
       return loadID;
+    }
+
+    unsigned int getNumberUniqueStrides() {
+      return strideValuesToCount->size();
     }
 
   private:
@@ -47,6 +55,8 @@ class LoadStride {
 
     vector< pair<long, long> > topStrideValues;
     vector< pair<long, long> > topStrideDifferenceValues;
+
+    pair<long, long> topStrideHolder;
     
     void updateTopStrideValues(long);
     void updateTopStrideDifferenceValues(long);

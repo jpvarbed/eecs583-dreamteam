@@ -65,6 +65,8 @@ namespace llvm {
     std::map<BasicBlock*, std::set<std::pair<Instruction*, Instruction*>* > > LoopToDepSetMap;
     std::map<BasicBlock*, unsigned int> LoopToMaxDepTimesMap;
 
+    std::map<Instruction *, loadInfo *> LoadToLoadInfo;
+
     static unsigned int lamp_id;
     static char ID;
     LAMPLoadProfile() : ModulePass (ID) {}

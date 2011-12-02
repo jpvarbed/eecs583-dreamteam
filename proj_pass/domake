@@ -1,1 +1,2 @@
+make clean
 gmake -j DISABLE_ASSERTIONS=0 ENABLE_OPTIMIZED=0

@@ -33,12 +33,12 @@ using namespace llvm;
 using namespace std;
 
 struct loadInfo {
-    int load_id;
-    vector<long> top_freqs;
-    int num_zero_diff;
-    int profiled_stride;
-    int num_strides;
-    int dominant_stride;
+    int load_id;            // the id for the load
+    vector<long> top_freqs; // top X frequencies for the top stride vlaues
+    int num_zero_diff;      // frequency of a stride of 0
+    int profiled_stride;    // ? TODO (all)
+    int num_strides;        // number of unique stride values
+    int dominant_stride;    // value of the most frequent stride value
     int trip_count;
 };
 
