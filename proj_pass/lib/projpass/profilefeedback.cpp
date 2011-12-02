@@ -6,16 +6,12 @@ using namespace std;
 using namespace llvm;
 //need Profile info
 
-set <Instruction*> SSST_loads;
-set <Instruction*> PMST_loads;
-set <Instruction*> WSST_loads;
-map <Instruction*, loadInfo> instToInfo;
 
 loadInfo getInfo(Instruction* inst)
 {
     map <Instruction*, loadInfo>::iterator findInfo;
-    findInfo = instToInfo.find(inst);
-    if(findInfo == instToInfo.end()){
+    findInfo = LoadToLoadInfo.find(inst);
+    if(findInfo == LoadToLoadInfo.end()){
         errs() << "couldnt find " << *inst << " in getInfo\n";
     }
     return findInfo->second;
@@ -29,14 +25,8 @@ void profile(Instruction *inst)
     int top_4_freq = 0;
     loadInfo profData = 0;
     int zeroDiff = 0;
-    map <Instruction*, loadInfo>::iterator findInfo;
     
-    findInfo = instToInfo.find(*inst);
-    if(findInfo == instToInfo.end()){
-        printf("couldn't find instruction\n");
-        errs() << *inst << "\n";
-    }
-    profData = findInfo->second;
+    profData = getInfo(inst);
         
     if(PI->getExecutionCount(inst->getParent()) =< FT)
         continue;
@@ -76,7 +66,7 @@ BinaryOperator *scratchAndSub(Instruction *inst)
     StoreInst *storePtr;
     BinaryOperator *subPtr;
     //inst->bb->fcn->module
-    Module *M = Inst->getParent()->getParent()->getParent();
+    Module *M = inst->getParent()->getParent()->getParent();
     BasicBlock *entryBlock = inst->getParent()->getParent()->getEntryBlock().begin();
     
     StringRef X = "scratch";
