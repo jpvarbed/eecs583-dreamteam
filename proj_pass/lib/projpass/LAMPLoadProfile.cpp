@@ -152,7 +152,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
 			for (BasicBlock::iterator IB = BBB->begin(), IE = BBB->end(); IB != IE; IB++)
 			{
         if (isa<LoadInst>(IB)) {
-          LoadIdToLoadInst[++load_Id] = IB; // TODO remove and replace with normal lamp_id?
+          LoadIdToLoadInst[++load_id] = IB; // TODO remove and replace with normal lamp_id?
         }
 
 				if (isa<LoadInst>(IB) || isa<StoreInst>(IB)){ // count loads, stores, calls
