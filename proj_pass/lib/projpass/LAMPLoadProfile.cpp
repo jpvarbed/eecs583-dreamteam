@@ -136,6 +136,7 @@ void LAMPLoadProfile::getAnalysisUsage(AnalysisUsage &AU) const {
 
 char LAMPLoadProfile::ID = 0;
 unsigned int LAMPLoadProfile::lamp_id = -1;
+unsigned int LAMPLoadProfile::load_id = -1;
 static RegisterPass<LAMPLoadProfile> Z("lamp-load-profile","Load back profile data and generate dependency information");
 
 bool LAMPLoadProfile::runOnModule(Module& M)
@@ -150,6 +151,10 @@ bool LAMPLoadProfile::runOnModule(Module& M)
 		{		// for all instructions in a block
 			for (BasicBlock::iterator IB = BBB->begin(), IE = BBB->end(); IB != IE; IB++)
 			{
+        if (isa<LoadInst>(IB)) {
+          LoadIdToLoadInst[++load_Id] = IB; // TODO remove and replace with normal lamp_id?
+        }
+
 				if (isa<LoadInst>(IB) || isa<StoreInst>(IB)){ // count loads, stores, calls
 					IdToInstMap[++lamp_id]=IB;
 					InstToIdMap[IB]=lamp_id;
@@ -178,7 +183,16 @@ bool LAMPLoadProfile::runOnModule(Module& M)
 	}
 	std::string s;
 
-  // TODO read all the stride profiling information
+  // TODO read all the stride profiling information and store in LoadToLoadInfo
+  
+  ifs >> s; // dump the STRIDEPROFILE_START
+  while (ifs >> s) {
+    if (s.find("STRIDEPROFILE_END") != std::string::npos) {
+      break;
+    }
+
+    
+  }
 
 	// discard the first three strings ("BEGIN" "Memory" "Profile")
 	ifs >> s; ifs >> s; ifs >> s;

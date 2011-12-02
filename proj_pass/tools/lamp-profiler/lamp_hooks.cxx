@@ -145,6 +145,8 @@ static ostream &debug() {
 }
 
 void LAMP_print_StrideProfile(ofstream &stream) {
+  stream << "STRIDEPROFILE_START";
+
   map<uint32_t, LoadStride *>::iterator itStart, itEnd;
   for (itStart = StrideProfiles.begin(), itEnd = StrideProfiles.end(); itStart != itEnd;
        itStart++) {
@@ -163,6 +165,8 @@ void LAMP_print_StrideProfile(ofstream &stream) {
 
     stream << endl;
   }
+
+  stream << "STRIDEPROFILE_END";
 }
 
 void LAMP_print_stats(ofstream &stream) {

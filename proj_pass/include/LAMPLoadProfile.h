@@ -25,6 +25,7 @@
 #include "llvm/Target/TargetData.h"
 #include "llvm/ADT/IndexedMap.h"
 #include "llvm/Module.h"
+#include "profilefeedback.h"
 #include <map>
 #include <sstream>
 #include <fstream>
@@ -65,9 +66,11 @@ namespace llvm {
     std::map<BasicBlock*, std::set<std::pair<Instruction*, Instruction*>* > > LoopToDepSetMap;
     std::map<BasicBlock*, unsigned int> LoopToMaxDepTimesMap;
 
+    std::map<unsigned int, Instruction *> LoadIdToLoadInst;
     std::map<Instruction *, loadInfo *> LoadToLoadInfo;
 
     static unsigned int lamp_id;
+    static unsigned int load_id;
     static char ID;
     LAMPLoadProfile() : ModulePass (ID) {}
 
