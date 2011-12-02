@@ -190,8 +190,36 @@ bool LAMPLoadProfile::runOnModule(Module& M)
     if (s.find("STRIDEPROFILE_END") != std::string::npos) {
       break;
     }
+  
+    size_t loc, loc2;
+    string tmp;
 
-    
+    // get the load id
+    loc = s.find_first_of(" ");
+    tmp = s.substr(0, loc);
+    int load_id = atoi(tmp);
+    Instruction *loadinstr = LoadIdToLoadInst[load_id];
+    loadInfo *load_info = new loadInfo;
+    load_info->load_id = load_id;
+   
+    // get num_strides
+    loc2 = s.find(" ", loc + 1);
+    tmp = s.substr(loc + 1, loc2 - loc);
+    load_info->num_strides = atoi(tmp);
+
+    // get num_zero_diff
+    loc = s.find(" ", loc2 + 1);
+    tmp = s.substr(loc2 + 1, loc - loc2);
+    load_info->num_zero_diff = atoi(tmp);
+
+    // get dominant_stride
+    loc2 = s.find(" ", loc + 1);
+    tmp = s.substr(loc + 1, loc2 - loc);
+    load_info->dominant_stride = atoi(tmp);
+
+    // get the vector of top_freqs
+
+    LoadToLoadInfo[loadinstr] = load_info;
   }
 
 	// discard the first three strings ("BEGIN" "Memory" "Profile")
