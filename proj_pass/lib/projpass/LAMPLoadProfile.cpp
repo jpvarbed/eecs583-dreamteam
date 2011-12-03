@@ -17,6 +17,7 @@
 #include <fstream>
 #include <iostream>
 #include <string>
+#include <algorithm>
 #include <sys/stat.h>
 #include "LAMPLoadProfile.h"
 
@@ -189,17 +190,25 @@ bool LAMPLoadProfile::runOnModule(Module& M)
       break;
     }
   
+    llvm::errs() << "Stride Profile: "<<s<<"\n";
+    
     Instruction *loadinstr = LoadIdToLoadInst[load_id];
     loadInfo *load_info = new loadInfo;
-    llvm::errs() << "Line: "<<s<<"\n";
+    unsigned int freq[4];
     sscanf(
       s.c_str(),
-      "%d %d %d %d",
+      "%d %d %d %d %u %u %u %u",
       &(load_info->load_id),
       &(load_info->num_strides),
       &(load_info->num_zero_diff),
-      &(load_info->dominant_stride)
+      &(load_info->dominant_stride),
+      &(freq[0]), &(freq[1]), &(freq[2]), &(freq[3])
     );
+
+    for (int a = 0; a < 4; a++) {
+      load_info->top_freqs.push_back(freq[a]);
+    }
+    sort(load_info->top_freqs.rbegin(), load_info->top_freqs.rend()); // sort desc order
 
     LoadToLoadInfo[loadinstr] = load_info;
   }
