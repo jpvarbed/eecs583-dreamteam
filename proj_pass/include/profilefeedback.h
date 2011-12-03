@@ -34,11 +34,11 @@ using namespace std;
 
 struct loadInfo {
     int load_id;            // the id for the load
-    vector<long> top_freqs; // top X frequencies for the top stride vlaues
-    int num_zero_diff;      // frequency of a stride of 0
-    int profiled_stride;    // ? TODO (all)
     int num_strides;        // number of unique stride values
+    int num_zero_diff;      // frequency of a stride of 0
     int dominant_stride;    // value of the most frequent stride value
+    vector<long> top_freqs; // top X frequencies for the top stride vlaues
+    int profiled_stride;    // ? TODO (all)
     int trip_count;
 };
 

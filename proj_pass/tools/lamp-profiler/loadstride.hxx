@@ -37,7 +37,7 @@ class LoadStride {
     }
 
     unsigned int getNumberUniqueStrides() {
-      return strideValuesToCount->size();
+      return strideValuesToCount.size();
     }
 
   private:
