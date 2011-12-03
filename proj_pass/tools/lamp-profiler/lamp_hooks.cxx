@@ -145,7 +145,7 @@ static ostream &debug() {
 }
 
 void LAMP_print_StrideProfile(ofstream &stream) {
-  stream << "STRIDEPROFILE_START";
+  stream << "STRIDEPROFILE_START" << endl;
 
   map<uint32_t, LoadStride *>::iterator itStart, itEnd;
   for (itStart = StrideProfiles.begin(), itEnd = StrideProfiles.end(); itStart != itEnd;
@@ -153,20 +153,20 @@ void LAMP_print_StrideProfile(ofstream &stream) {
     uint32_t load_id = itStart->first;
     LoadStride *loadStride = itStart->second;
     
-    stream << load_id << "\t";
-    stream << loadStride->getNumberUniqueStrides() << "\t";
-    stream << loadStride->getStrideZeroCount() << "\t";
-    stream << loadStride->getTopStrideValue()->first << "\t";
+    stream << load_id << " ";
+    stream << loadStride->getNumberUniqueStrides() << " ";
+    stream << loadStride->getStrideZeroCount() << " ";
+    stream << loadStride->getTopStrideValue()->first << " ";
     
     vector< pair<long, long> > *topStrides = loadStride->getTopStrideValues();
     for (unsigned int i = 0; i < topStrides->size(); i++) {
-      stream << topStrides->at(i).second << "\t";
+      stream << topStrides->at(i).second << " ";
     }
 
     stream << endl;
   }
 
-  stream << "STRIDEPROFILE_END";
+  stream << "STRIDEPROFILE_END" << endl;
 }
 
 void LAMP_print_stats(ofstream &stream) {

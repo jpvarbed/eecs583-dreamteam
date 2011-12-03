@@ -182,42 +182,24 @@ bool LAMPLoadProfile::runOnModule(Module& M)
 		return false;
 	}
 	std::string s;
-
-  // TODO read all the stride profiling information and store in LoadToLoadInfo
   
-  ifs >> s; // dump the STRIDEPROFILE_START
-  while (ifs >> s) {
+  getline(ifs, s); // dump the STRIDEPROFILE_START
+  while (getline(ifs, s)) {
     if (s.find("STRIDEPROFILE_END") != std::string::npos) {
       break;
     }
   
-    size_t loc, loc2;
-    string tmp;
-
-    // get the load id
-    loc = s.find_first_of(" ");
-    tmp = s.substr(0, loc);
-    int load_id = atoi(tmp.c_str());
     Instruction *loadinstr = LoadIdToLoadInst[load_id];
     loadInfo *load_info = new loadInfo;
-    load_info->load_id = load_id;
-   
-    // get num_strides
-    loc2 = s.find(" ", loc + 1);
-    tmp = s.substr(loc + 1, loc2 - loc);
-    load_info->num_strides = atoi(tmp.c_str());
-
-    // get num_zero_diff
-    loc = s.find(" ", loc2 + 1);
-    tmp = s.substr(loc2 + 1, loc - loc2);
-    load_info->num_zero_diff = atoi(tmp.c_str());
-
-    // get dominant_stride
-    loc2 = s.find(" ", loc + 1);
-    tmp = s.substr(loc + 1, loc2 - loc);
-    load_info->dominant_stride = atoi(tmp.c_str());
-
-    // get the vector of top_freqs
+    llvm::errs() << "Line: "<<s<<"\n";
+    sscanf(
+      s.c_str(),
+      "%d %d %d %d",
+      &(load_info->load_id),
+      &(load_info->num_strides),
+      &(load_info->num_zero_diff),
+      &(load_info->dominant_stride)
+    );
 
     LoadToLoadInfo[loadinstr] = load_info;
   }
