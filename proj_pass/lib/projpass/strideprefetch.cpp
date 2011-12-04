@@ -147,20 +147,17 @@ void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, i
   prefetchFn = module->getOrInsertFunction(
     "llvm.prefetch",
     llvm::Type::getVoidTy(context),
-    llvm::Type::getInt8Ty(context),
-    llvm::Type::getInt32Ty(context),
+    llvm::Type::getInt8PtrTy(context),
     llvm::Type::getInt32Ty(context),
     llvm::Type::getInt32Ty(context),
     (Type *) 0
   );
-
-  vector<Value*> Args(4);
-  // Args[0] needs to be the address to prefetch... but why is it an Int8Ty?
-  Args[0] = ConstantInt::get(llvm::Type::getInt8Ty(context), address); // 0 is read
+  
+  vector<Value*> Args(3);
+  Args[0] = ConstantInt::get(llvm::Type::getInt8PtrTy(context), address); // 0 is read
   Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(context), 0);
   // Args[2] temporal locality value? ranges from 0 - 3
-  Args[2] = ConstantInt::get(llvm::Type::getInt32Ty(context), locality);
-  Args[3] = ConstantInt::get(llvm::Type::getInt32Ty(context), 1); // 1 data prefetch
+  Args[2] = ConstantInt::get(llvm::Type::getInt32Ty(context), 2);
 
   // insert the prefetch call
   CallInst::Create(prefetchFn, Args.begin(), Args.end(), "", before);
