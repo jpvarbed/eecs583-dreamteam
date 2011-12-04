@@ -84,7 +84,7 @@ namespace {
       void insertPMST(Instruction *inst, double K);
       void insertWSST(Instruction *inst, double K);
       void insertLoad(Instruction *inst);
-      void actuallyInsertPrefetch(Instruction *before, long address, int locality); 
+      void actuallyInsertPrefetch(Instruction *before, long address, int locality, loadInfo* load_info); 
   };
 }
 
@@ -111,12 +111,6 @@ bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
   LP = &getAnalysis<LAMPLoadProfile>();
   DT = &getAnalysis<DominatorTree>();
 
-  map<Instruction*, loadInfo*>::iterator s, e;
-  errs() << "Size of LoadToLoadInfo: "<<LP->LoadToLoadInfo.size()<<"\n";
-  for (s = LP->LoadToLoadInfo.begin(), e = LP->LoadToLoadInfo.end(); s != e; s++) {
-    errs() << *(s->first) << " ..... " << s->second->load_id<<"\n";
-  }
-
   Preheader = L->getLoopPreheader();
   Preheader->setName(Preheader->getName() + ".preheader");
 
@@ -124,7 +118,7 @@ bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
   for (BasicBlock::iterator II = BB->begin(), E = BB->end(); II != E; II++) {
     Instruction *I = II;
     if (dyn_cast<LoadInst>(I)) {
-      actuallyInsertPrefetch(I, getInfo(I)->dominant_stride, 0);
+      actuallyInsertPrefetch(I, getInfo(I)->dominant_stride, 0, getInfo(I));
     }
   }
 
@@ -140,7 +134,9 @@ loadInfo* StridePrefetch::getInfo(Instruction* inst) {
   return findInfo->second;
 }
 
-void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, int locality) {
+void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, int locality, loadInfo *load_info) {
+  errs() << "Prefetching #"<<load_info->load_id<<" with addr: "<<address<<"\n";
+
   LLVMContext &context = Preheader->getParent()->getContext();
   Module *module = Preheader->getParent()->getParent();
   Constant* prefetchFn;
