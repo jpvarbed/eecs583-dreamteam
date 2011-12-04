@@ -114,6 +114,7 @@ bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
   Preheader = L->getLoopPreheader();
   Preheader->setName(Preheader->getName() + ".preheader");
 
+  // TODO this doesn't loop through all the basic blocks, this has to be redone.
   BasicBlock *BB = DT->getNode(L->getHeader())->getBlock();
   for (BasicBlock::iterator II = BB->begin(), E = BB->end(); II != E; II++) {
     Instruction *I = II;
