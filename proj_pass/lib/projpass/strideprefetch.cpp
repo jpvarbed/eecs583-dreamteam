@@ -63,25 +63,28 @@ namespace {
       AU.addRequired<LAMPLoadProfile>();
     }
     private:
-    AliasAnalysis *AA;
-    LoopInfo *LI;
-    DominatorTree *DT;
-    ProfileInfo *PI;
-    LAMPLoadProfile *LP;
-    
-    set <Instruction*> SSST_loads;
-    set <Instruction*> PMST_loads;
-    set <Instruction*> WSST_loads;
+      AliasAnalysis *AA;
+      LoopInfo *LI;
+      DominatorTree *DT;
+      ProfileInfo *PI;
+      LAMPLoadProfile *LP;
 
-    loadInfo* getInfo(Instruction* inst);
-    void profile(Instruction* inst);
-    BinaryOperator *scratchAndSub(Instruction *inst);
-    void insertPrefetch(Instruction *inst, double K, BinaryOperator *sub);
-    void insertSSST(Instruction *inst, double K);
-    void insertPMST(Instruction *inst, double K);
-    void insertWSST(Instruction *inst, double K);
-    void insertLoad(Instruction *inst);
-    void actuallyInsertPrefetch(Instruction *before, long address, int locality); 
+      bool Changed;
+      BasicBlock *Preheader;
+      
+      set <Instruction*> SSST_loads;
+      set <Instruction*> PMST_loads;
+      set <Instruction*> WSST_loads;
+
+      loadInfo* getInfo(Instruction* inst);
+      void profile(Instruction* inst);
+      BinaryOperator *scratchAndSub(Instruction *inst);
+      void insertPrefetch(Instruction *inst, double K, BinaryOperator *sub);
+      void insertSSST(Instruction *inst, double K);
+      void insertPMST(Instruction *inst, double K);
+      void insertWSST(Instruction *inst, double K);
+      void insertLoad(Instruction *inst);
+      void actuallyInsertPrefetch(Instruction *before, long address, int locality); 
   };
 }
 
@@ -101,15 +104,20 @@ char StridePrefetch::ID = 0;
   static RegisterPass<StridePrefetch> X("projpass", "LICM Pass", true, true);
 
 bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
-  bool Changed = false;
+  Changed = false;
 
+  LI = &getAnalysis<LoopInfo>();
+  PI = &getAnalysis<ProfileInfo>();
   LP = &getAnalysis<LAMPLoadProfile>();
+
+  Preheader = L->getLoopPreheader();
+  Preheader->setName(Preheader->getName() + ".preheader");
 
   return Changed;
 }
 
 loadInfo* StridePrefetch::getInfo(Instruction* inst) {
-  map<Instruction*, loadInfo *>::iterator findInfo;
+  map<Instruction*, loadInfo*>::iterator findInfo;
   findInfo = LP->LoadToLoadInfo.find(inst);
   if(findInfo == LP->LoadToLoadInfo.end()){
     errs() << "couldnt find " << *inst << " in getInfo\n";
