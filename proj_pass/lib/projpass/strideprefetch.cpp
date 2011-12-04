@@ -33,6 +33,8 @@
 #include "llvm/ADT/Statistic.h"
 #include "profilefeedback.h"
 #include "LAMPLoadProfile.h"
+#include <vector>
+#include <algorithm>
 using namespace llvm;
 
 namespace llvm {
@@ -66,12 +68,12 @@ namespace {
     DominatorTree *DT;
     ProfileInfo *PI;
     LAMPLoadProfile *LP;
-#if FALSE
+    
     set <Instruction*> SSST_loads;
     set <Instruction*> PMST_loads;
     set <Instruction*> WSST_loads;
 
-    loadInfo getInfo(Instruction* inst);
+    loadInfo* getInfo(Instruction* inst);
     void profile(Instruction* inst);
     BinaryOperator *scratchAndSub(Instruction *inst);
     void insertPrefetch(Instruction *inst, double K, BinaryOperator *sub);
@@ -79,7 +81,7 @@ namespace {
     void insertPMST(Instruction *inst, double K);
     void insertWSST(Instruction *inst, double K);
     void insertLoad(Instruction *inst);
-#endif
+    void actuallyInsertPrefetch(Instruction *before, long address, int locality); 
   };
 }
 
@@ -98,38 +100,63 @@ INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
   INITIALIZE_PASS_END(StridePrefetch, "strideprefetch", "Stride Prefetching", false, false)
   static RegisterPass<StridePrefetch> X("projpass", "LICM Pass", true, true);
 
-  bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
-    return false;
-  }
+bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
+  bool Changed = false;
 
-#if FALSE
-loadInfo StridePrefetch::getInfo(Instruction* inst) {
-  map <Instruction*, loadInfo>::iterator findInfo;
-  findInfo = LoadToLoadInfo.find(inst);
-  if(findInfo == LoadToLoadInfo.end()){
+  LP = &getAnalysis<LAMPLoadProfile>();
+
+  return Changed;
+}
+
+loadInfo* StridePrefetch::getInfo(Instruction* inst) {
+  map<Instruction*, loadInfo *>::iterator findInfo;
+  findInfo = LP->LoadToLoadInfo.find(inst);
+  if(findInfo == LP->LoadToLoadInfo.end()){
     errs() << "couldnt find " << *inst << " in getInfo\n";
   }
   return findInfo->second;
 }
 
+void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, int locality) {
+  // TODO: need to define M (Module)
+  Constant* prefetchFn;
+  prefetchFn = M->getOrInsertFunction(
+    "int_prefetch",
+    llvm::Type::getVoidTy(M->getContext()),
+    llvm::Type::getInt8Ty(M->getContext()),
+    llvm::Type::getInt32Ty(M->getContext()),
+    llvm::Type::getInt32Ty(M->getContext()),
+    llvm::Type::getInt32Ty(M->getContext()),
+    (Type *) 0
+  );
 
+  vector<Value*> Args(4);
+  // Args[0] needs to be the address to prefetch... but why is it an Int8Ty?
+  Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(M->getContext()), 0); // 0 is read
+  // Args[2] temporal locality value? ranges from 0 - 3
+  Args[3] = ConstantInt::get(llvm::Type::getInt32Ty(M->getContext()), 1); // 1 data prefetch
+
+  // insert the prefetch call
+  CallInst::Create(prefetchFn, Args.begin(), Args.end(), "", before);
+}
+
+// TODO shouldn't this be in a loop over the load insts?
 void StridePrefetch::profile(Instruction *inst) {
   int freq1 = 0;
   int num_strides = 0;
   int top_4_freq = 0;
-  loadInfo profData = 0;
   int zeroDiff = 0;
 
-  profData = getInfo(inst);
+  loadInfo profData = *getInfo(inst);
 
-  if(PI->getExecutionCount(inst->getParent()) =< FT)
-    continue;
+  if(PI->getExecutionCount(inst->getParent()) <= FT)
+    return;
   //assume that loads passed in are in loops
-  if(PI->getExecutionCount(Preheader) =< TT)
-    continue;
-  freq1 = profData.freq[0]
+  if(PI->getExecutionCount(Preheader) <= TT)
+    return;
+  freq1 = profData.top_freqs[0];
     num_strides = profData.num_strides;
-  for(unsigned int i = 0; i < profData.freq.size(); i++)
+  for(unsigned int i = 0; i < profData.top_freqs.size(); i++)
     top_4_freq+=profData.top_freqs[i];
   zeroDiff = profData.num_zero_diff;
   //cache line stuff...not sure yet?
@@ -166,19 +193,18 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
   StringRef Name = inst->getName();
   //make alloca for scratch reg
   Value *loadAddr = inst->getPointerOperand();
-  allocaPtr = new AllocaInst(loadAddr->getType(), 
-      X+Name, entryBlock); 
+  scratchPtr = new AllocaInst(loadAddr->getType(), X + Name, entryBlock); 
 
   //store[scratchPtr] = loadAddr
   storePtr = new StoreInst(scratchPtr, loadAddr, inst);
 
   //stride = addr(load) - scratch
   subPtr = BinaryOperator::Create(Instruction::Sub,
-      loadAddr,
-      scratchPtr,
-      "stride",
-      inst
-      );
+    loadAddr,
+    scratchPtr,
+    "stride",
+    inst
+  );
   return subPtr;
 }
 
@@ -204,12 +230,12 @@ void StridePrefetch::insertPMST(Instruction *inst, double K) {
 void StridePrefetch::insertWSST(Instruction *inst, double K) {
   BinaryOperator *subPtr = scratchAndSub(inst);
   ICmpInst *ICmpPtr;
-  loadInfo profData = getInfo(inst);
+  loadInfo profData = *getInfo(inst);
   int profiled_stride = profData.profiled_stride;
   ICmpPtr = new ICmpInst(inst, 
       ICmpInst::ICMP_EQ,
       subPtr,
-      Constant::get(inst->getPointerOperand->getType(), profiled_stride), 
+      ConstantInt::get(inst->getPointerOperand->getType(), profiled_stride), 
       "cmpweak");
   insertPrefetch(inst, K, subPtr);
 }
@@ -217,10 +243,10 @@ void StridePrefetch::insertWSST(Instruction *inst, double K) {
 void StridePrefetch::insertLoad(Instruction *inst) {
   //determine K
   double K = 0;
-  loadInfo profData = getInfo(inst);
+  loadInfo profData = *getInfo(inst);
   double dataArea = profData.dominant_stride * profData.trip_count;
   double C = MAXPREFETCHDISTANCE;
-  K = min(profData.trip_count/TT, C);
+  K = min((double) profData.trip_count/TT, C);
   //we can incorporate cache stuff if need be
   //call the corresponding load list
   set <Instruction*>::iterator loadIT;
@@ -233,4 +259,3 @@ void StridePrefetch::insertLoad(Instruction *inst) {
   else
     errs() << "inst not inserted\n";
 }
-#endif
