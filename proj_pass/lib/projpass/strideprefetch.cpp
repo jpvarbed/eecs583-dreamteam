@@ -154,10 +154,11 @@ void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, i
   );
   
   vector<Value*> Args(3);
-  Args[0] = ConstantInt::get(llvm::Type::getInt8PtrTy(context), address); // 0 is read
+  Constant *tmp = ConstantInt::get(llvm::Type::getInt8Ty(context), address);
+  Args[0] = ConstantExpr::getIntToPtr(tmp, llvm::Type::getInt8PtrTy(context));
   Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(context), 0);
   // Args[2] temporal locality value? ranges from 0 - 3
-  Args[2] = ConstantInt::get(llvm::Type::getInt32Ty(context), 2);
+  Args[2] = ConstantInt::get(llvm::Type::getInt32Ty(context), locality);
 
   // insert the prefetch call
   CallInst::Create(prefetchFn, Args.begin(), Args.end(), "", before);
