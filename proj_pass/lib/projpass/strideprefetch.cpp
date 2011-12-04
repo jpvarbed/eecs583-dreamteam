@@ -145,7 +145,7 @@ void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, i
   Module *module = Preheader->getParent()->getParent();
   Constant* prefetchFn;
   prefetchFn = module->getOrInsertFunction(
-    "int_prefetch",
+    "llvm.prefetch",
     llvm::Type::getVoidTy(context),
     llvm::Type::getInt8Ty(context),
     llvm::Type::getInt32Ty(context),
