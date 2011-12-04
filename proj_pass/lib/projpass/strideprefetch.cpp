@@ -109,9 +109,16 @@ bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
   LI = &getAnalysis<LoopInfo>();
   PI = &getAnalysis<ProfileInfo>();
   LP = &getAnalysis<LAMPLoadProfile>();
+  DT = &getAnalysis<DominatorTree>();
 
   Preheader = L->getLoopPreheader();
   Preheader->setName(Preheader->getName() + ".preheader");
+
+  BasicBlock *BB = DT->getNode(L->getHeader())->getBlock();
+  for (BasicBlock::iterator II = BB->begin(), E = BB->end(); II != E; II++) {
+    Instruction *I = II;
+    
+  }
 
   return Changed;
 }
@@ -126,7 +133,6 @@ loadInfo* StridePrefetch::getInfo(Instruction* inst) {
 }
 
 void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, int locality) {
-  // TODO: need to define M (Module)
   LLVMContext &context = Preheader->getParent()->getContext();
   Module *module = Preheader->getParent()->getParent();
   Constant* prefetchFn;
@@ -150,7 +156,6 @@ void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, i
   CallInst::Create(prefetchFn, Args.begin(), Args.end(), "", before);
 }
 
-// TODO shouldn't this be in a loop over the load insts?
 void StridePrefetch::profile(Instruction *inst) {
   int freq1 = 0;
   int num_strides = 0;
