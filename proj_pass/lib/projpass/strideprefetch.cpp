@@ -96,7 +96,7 @@ char StridePrefetch::ID = 0;
   INITIALIZE_PASS_DEPENDENCY(DominatorTree)
   INITIALIZE_PASS_DEPENDENCY(LoopInfo)
   INITIALIZE_PASS_DEPENDENCY(LoopSimplify)
-INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
+  INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
   INITIALIZE_PASS_END(StridePrefetch, "strideprefetch", "Stride Prefetching", false, false)
   static RegisterPass<StridePrefetch> X("projpass", "LICM Pass", true, true);
 
