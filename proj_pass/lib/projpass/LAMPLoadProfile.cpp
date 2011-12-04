@@ -154,6 +154,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
 			{
         if (isa<LoadInst>(IB)) {
           LoadIdToLoadInst[++load_id] = IB; // TODO remove and replace with normal lamp_id?
+          llvm::errs() << load_id << " : " << IB << "\n";
         }
 
 				if (isa<LoadInst>(IB) || isa<StoreInst>(IB)){ // count loads, stores, calls
@@ -190,9 +191,6 @@ bool LAMPLoadProfile::runOnModule(Module& M)
       break;
     }
   
-    llvm::errs() << "Stride Profile: "<<s<<"\n";
-    
-    Instruction *loadinstr = LoadIdToLoadInst[load_id];
     loadInfo *load_info = new loadInfo;
     unsigned int freq[4];
     sscanf(
@@ -204,6 +202,9 @@ bool LAMPLoadProfile::runOnModule(Module& M)
       &(load_info->dominant_stride),
       &(freq[0]), &(freq[1]), &(freq[2]), &(freq[3])
     );
+    
+    llvm::errs() << "Stride Profile ("<<LoadIdToLoadInst[load_info->load_id]<<"): "<<s<<"\n";
+    Instruction *loadinstr = LoadIdToLoadInst[load_info->load_id];
 
     for (int a = 0; a < 4; a++) {
       load_info->top_freqs.push_back(freq[a]);

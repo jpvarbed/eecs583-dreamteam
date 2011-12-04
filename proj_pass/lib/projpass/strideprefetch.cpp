@@ -111,13 +111,21 @@ bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
   LP = &getAnalysis<LAMPLoadProfile>();
   DT = &getAnalysis<DominatorTree>();
 
+  map<Instruction*, loadInfo*>::iterator s, e;
+  errs() << "Size of LoadToLoadInfo: "<<LP->LoadToLoadInfo.size()<<"\n";
+  for (s = LP->LoadToLoadInfo.begin(), e = LP->LoadToLoadInfo.end(); s != e; s++) {
+    errs() << *(s->first) << " ..... " << s->second->load_id<<"\n";
+  }
+
   Preheader = L->getLoopPreheader();
   Preheader->setName(Preheader->getName() + ".preheader");
 
   BasicBlock *BB = DT->getNode(L->getHeader())->getBlock();
   for (BasicBlock::iterator II = BB->begin(), E = BB->end(); II != E; II++) {
     Instruction *I = II;
-    
+    if (dyn_cast<LoadInst>(I)) {
+      actuallyInsertPrefetch(I, getInfo(I)->dominant_stride, 0);
+    }
   }
 
   return Changed;
@@ -126,7 +134,7 @@ bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
 loadInfo* StridePrefetch::getInfo(Instruction* inst) {
   map<Instruction*, loadInfo*>::iterator findInfo;
   findInfo = LP->LoadToLoadInfo.find(inst);
-  if(findInfo == LP->LoadToLoadInfo.end()){
+  if (findInfo == LP->LoadToLoadInfo.end()) {
     errs() << "couldnt find " << *inst << " in getInfo\n";
   }
   return findInfo->second;
@@ -148,8 +156,10 @@ void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, i
 
   vector<Value*> Args(4);
   // Args[0] needs to be the address to prefetch... but why is it an Int8Ty?
-  Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(context), 0); // 0 is read
+  Args[0] = ConstantInt::get(llvm::Type::getInt8Ty(context), address); // 0 is read
+  Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(context), 0);
   // Args[2] temporal locality value? ranges from 0 - 3
+  Args[2] = ConstantInt::get(llvm::Type::getInt32Ty(context), locality);
   Args[3] = ConstantInt::get(llvm::Type::getInt32Ty(context), 1); // 1 data prefetch
 
   // insert the prefetch call
