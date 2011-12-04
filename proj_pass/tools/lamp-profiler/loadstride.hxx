@@ -3,6 +3,8 @@
 #include <vector>
 #include <utility>
 #include <map>
+#include <stdint.h> 
+
 using namespace std;
 class LoadStride {
 

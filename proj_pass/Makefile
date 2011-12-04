@@ -16,4 +16,4 @@ LOADABLE_MODULE=1
 # Include the Master Makefile that knows how to build all.
 #
 include $(LEVEL)/Makefile.common
-
+EXTRA_OPTIONS = -fexceptions

@@ -195,12 +195,12 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
   BinaryOperator *subPtr;
   //inst->bb->fcn->module
   Module *M = inst->getParent()->getParent()->getParent();
-  BasicBlock *entryBlock = inst->getParent()->getParent()->getEntryBlock().begin();
+  BasicBlock *entryBlock = &inst->getParent()->getParent()->getEntryBlock();
 
   StringRef X = "scratch";
   StringRef Name = inst->getName();
   //make alloca for scratch reg
-  Value *loadAddr = inst->getPointerOperand();
+  Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
   scratchPtr = new AllocaInst(loadAddr->getType(), X + Name, entryBlock); 
 
   //store[scratchPtr] = loadAddr
@@ -243,7 +243,7 @@ void StridePrefetch::insertWSST(Instruction *inst, double K) {
   ICmpPtr = new ICmpInst(inst, 
       ICmpInst::ICMP_EQ,
       subPtr,
-      ConstantInt::get(inst->getPointerOperand->getType(), profiled_stride), 
+      ConstantInt::get(dyn_cast<LoadInst>(inst)->getPointerOperand()->getType(), profiled_stride), 
       "cmpweak");
   insertPrefetch(inst, K, subPtr);
 }

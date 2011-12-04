@@ -11,3 +11,4 @@ LOADABLE_MODULE=1
 DIRS=projpass
 
 include $(LEVEL)/Makefile.common
+EXTRA_OPTIONS = -fexceptions
