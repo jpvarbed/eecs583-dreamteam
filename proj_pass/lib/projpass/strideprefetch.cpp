@@ -127,22 +127,24 @@ loadInfo* StridePrefetch::getInfo(Instruction* inst) {
 
 void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, int locality) {
   // TODO: need to define M (Module)
+  LLVMContext &context = Preheader->getParent()->getContext();
+  Module *module = Preheader->getParent()->getParent();
   Constant* prefetchFn;
-  prefetchFn = M->getOrInsertFunction(
+  prefetchFn = module->getOrInsertFunction(
     "int_prefetch",
-    llvm::Type::getVoidTy(M->getContext()),
-    llvm::Type::getInt8Ty(M->getContext()),
-    llvm::Type::getInt32Ty(M->getContext()),
-    llvm::Type::getInt32Ty(M->getContext()),
-    llvm::Type::getInt32Ty(M->getContext()),
+    llvm::Type::getVoidTy(context),
+    llvm::Type::getInt8Ty(context),
+    llvm::Type::getInt32Ty(context),
+    llvm::Type::getInt32Ty(context),
+    llvm::Type::getInt32Ty(context),
     (Type *) 0
   );
 
   vector<Value*> Args(4);
   // Args[0] needs to be the address to prefetch... but why is it an Int8Ty?
-  Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(M->getContext()), 0); // 0 is read
+  Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(context), 0); // 0 is read
   // Args[2] temporal locality value? ranges from 0 - 3
-  Args[3] = ConstantInt::get(llvm::Type::getInt32Ty(M->getContext()), 1); // 1 data prefetch
+  Args[3] = ConstantInt::get(llvm::Type::getInt32Ty(context), 1); // 1 data prefetch
 
   // insert the prefetch call
   CallInst::Create(prefetchFn, Args.begin(), Args.end(), "", before);
