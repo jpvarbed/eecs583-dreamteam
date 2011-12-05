@@ -23,7 +23,7 @@ int main(void) {
   L0 = 0; // shouldn't count since it's out of the loop
   L1 = 0; 
   for (int i = 0; i < 10; ++i) {
-    if (i%2) {
+    if (i % 2) {
       ++L0;
     }
     else { 
