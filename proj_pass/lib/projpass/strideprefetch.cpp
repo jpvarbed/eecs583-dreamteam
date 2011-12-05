@@ -44,24 +44,25 @@ namespace llvm {
 namespace {
   struct StridePrefetch : public LoopPass {
 
-    static char ID;
+      static char ID;
 
-    StridePrefetch() : LoopPass(ID) {
-      initializeStridePrefetchPass(*PassRegistry::getPassRegistry());
-    }
+      StridePrefetch() : LoopPass(ID) {
+        initializeStridePrefetchPass(*PassRegistry::getPassRegistry());
+      }
 
-    virtual bool runOnLoop(Loop *L, LPPassManager &LPM);
+      virtual bool runOnLoop(Loop *L, LPPassManager &LPM);
 
-    /// This transformation requires natural loop information & requires that
-    /// loop preheaders be inserted into the CFG...
-    ///
-    virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-      AU.addRequired<DominatorTree>();
-      AU.addRequired<LoopInfo>();
-      AU.addRequired<ProfileInfo>();
-      AU.addRequired<AliasAnalysis>();
-      AU.addRequired<LAMPLoadProfile>();
-    }
+      /// This transformation requires natural loop information & requires that
+      /// loop preheaders be inserted into the CFG...
+      ///
+      virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+        AU.addRequired<DominatorTree>();
+        AU.addRequired<LoopInfo>();
+        AU.addRequired<ProfileInfo>();
+        AU.addRequired<AliasAnalysis>();
+        AU.addRequired<LAMPLoadProfile>();
+      }
+
     private:
       AliasAnalysis *AA;
       LoopInfo *LI;
@@ -71,10 +72,15 @@ namespace {
 
       bool Changed;
       BasicBlock *Preheader;
-      
+      Loop *CurrentLoop;
+
       set <Instruction*> SSST_loads;
       set <Instruction*> PMST_loads;
       set <Instruction*> WSST_loads;
+
+      bool insideSubLoop(BasicBlock *BB) {
+        return (LI->getLoopFor(BB) != CurrentLoop);
+      }
 
       loadInfo* getInfo(Instruction* inst);
       void profile(Instruction* inst);
@@ -84,7 +90,8 @@ namespace {
       void insertPMST(Instruction *inst, double K);
       void insertWSST(Instruction *inst, double K);
       void insertLoad(Instruction *inst);
-      void actuallyInsertPrefetch(Instruction *before, long address, int locality, loadInfo* load_info); 
+      void actuallyInsertPrefetch(Instruction *before, long address, int locality, loadInfo* load_info);
+      void loopOver(DomTreeNode *N);
   };
 }
 
@@ -113,17 +120,39 @@ bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
 
   Preheader = L->getLoopPreheader();
   Preheader->setName(Preheader->getName() + ".preheader");
+  
+  CurrentLoop = L;
 
-  // TODO this doesn't loop through all the basic blocks, this has to be redone.
-  BasicBlock *BB = DT->getNode(L->getHeader())->getBlock();
-  for (BasicBlock::iterator II = BB->begin(), E = BB->end(); II != E; II++) {
-    Instruction *I = II;
-    if (dyn_cast<LoadInst>(I)) {
-      actuallyInsertPrefetch(I, getInfo(I)->dominant_stride, 0, getInfo(I));
-    }
-  }
+  loopOver(DT->getNode(L->getHeader()));
+
+  // clear varaibles for the next runOnLoop iteration
+  CurrentLoop = 0;
+  Preheader = 0;
 
   return Changed;
+}
+
+void StridePrefetch::loopOver(DomTreeNode *N) {
+  BasicBlock *BB = N->getBlock();
+
+  if (!CurrentLoop->contains(BB)) {
+    return; // this subregion is not in the loop so return out of here
+  }
+
+  if (!insideSubLoop(BB)) {
+
+    for (BasicBlock::iterator II = BB->begin(), E = BB->end(); II != E; II++) {
+      Instruction *I = II;
+      if (dyn_cast<LoadInst>(I)) {
+        actuallyInsertPrefetch(I, getInfo(I)->dominant_stride, 0, getInfo(I));
+      }
+    }
+
+  }
+  const vector<DomTreeNode *> &Children = N->getChildren();
+  for (unsigned i = 0, e = Children.size(); i != e; ++i) {
+    loopOver(Children[i]);
+  }
 }
 
 loadInfo* StridePrefetch::getInfo(Instruction* inst) {
