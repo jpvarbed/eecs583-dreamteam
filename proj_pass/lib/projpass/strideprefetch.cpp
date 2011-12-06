@@ -90,7 +90,7 @@ namespace {
       void insertPMST(Instruction *inst, double K);
       void insertWSST(Instruction *inst, double K);
       void insertLoad(Instruction *inst);
-      void actuallyInsertPrefetch(Instruction *before, long address, int locality, loadInfo* load_info);
+      void actuallyInsertPrefetch(loadInfo* load_info, Instruction *before, long address, int locality = 3);
       void loopOver(DomTreeNode *N);
   };
 }
@@ -144,7 +144,7 @@ void StridePrefetch::loopOver(DomTreeNode *N) {
     for (BasicBlock::iterator II = BB->begin(), E = BB->end(); II != E; II++) {
       Instruction *I = II;
       if (dyn_cast<LoadInst>(I)) {
-        actuallyInsertPrefetch(I, getInfo(I)->dominant_stride, 0, getInfo(I));
+        actuallyInsertPrefetch(getInfo(I), I, getInfo(I)->dominant_stride);
       }
     }
 
@@ -164,7 +164,7 @@ loadInfo* StridePrefetch::getInfo(Instruction* inst) {
   return findInfo->second;
 }
 
-void StridePrefetch::actuallyInsertPrefetch(Instruction *before, long address, int locality, loadInfo *load_info) {
+void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info, Instruction *before, long address, int locality) {
   errs() << "Prefetching #"<<load_info->load_id<<" with addr: "<<address<<"\n";
 
   LLVMContext &context = Preheader->getParent()->getContext();
@@ -198,31 +198,37 @@ void StridePrefetch::profile(Instruction *inst) {
 
   loadInfo profData = *getInfo(inst);
 
-  if(PI->getExecutionCount(inst->getParent()) <= FT)
+  if(PI->getExecutionCount(inst->getParent()) <= FT) {
     return;
+  }
   //assume that loads passed in are in loops
-  if(PI->getExecutionCount(Preheader) <= TT)
+  if(PI->getExecutionCount(Preheader) <= TT) {
     return;
+  }
+  
   freq1 = profData.top_freqs[0];
-    num_strides = profData.num_strides;
-  for(unsigned int i = 0; i < profData.top_freqs.size(); i++)
+  num_strides = profData.num_strides;
+  
+  for(unsigned int i = 0; i < profData.top_freqs.size(); i++) {
     top_4_freq+=profData.top_freqs[i];
+  }
+  
   zeroDiff = profData.num_zero_diff;
+  
   //cache line stuff...not sure yet?
-  if(freq1/num_strides > SSST_T){
+  if (freq1/num_strides > SSST_T) {
     SSST_loads.insert(inst);
     printf("adding to SSST\n");
   }
-  else if((top_4_freq/num_strides > PMST_T) && zeroDiff/num_strides > PMST_T){
+  else if ((top_4_freq/num_strides > PMST_T) && zeroDiff/num_strides > PMST_T) {
     PMST_loads.insert(inst);
     printf("adding to PMST\n");
   }
-  else if((freq1/num_strides > WSST_T) && (zeroDiff/num_strides > PMST_T))
-  {
+  else if ((freq1/num_strides > WSST_T) && (zeroDiff/num_strides > PMST_T)) {
     WSST_loads.insert(inst);
     printf("adding to WSST\n");
   }
-  else{
+  else {
     printf("adding to none\n");
   }
 }
@@ -299,12 +305,16 @@ void StridePrefetch::insertLoad(Instruction *inst) {
   //we can incorporate cache stuff if need be
   //call the corresponding load list
   set <Instruction*>::iterator loadIT;
-  if(PMST_loads.count(inst))
+  if (PMST_loads.count(inst)) {
     insertPMST(inst,K);
-  else if(SSST_loads.count(inst))
+  }
+  else if (SSST_loads.count(inst)) {
     insertSSST(inst,K);
-  else if(WSST_loads.count(inst))
+  }
+  else if (WSST_loads.count(inst)) {
     insertWSST(inst, K);
-  else
+  }
+  else {
     errs() << "inst not inserted\n";
+  }
 }
