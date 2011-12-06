@@ -102,13 +102,13 @@ namespace llvm {
 }
 
 char StridePrefetch::ID = 0;
-  INITIALIZE_PASS_BEGIN(StridePrefetch, "strideprefetch", "Stride Prefetching", false, false)
-  INITIALIZE_PASS_DEPENDENCY(DominatorTree)
-  INITIALIZE_PASS_DEPENDENCY(LoopInfo)
-  INITIALIZE_PASS_DEPENDENCY(LoopSimplify)
-  INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
-  INITIALIZE_PASS_END(StridePrefetch, "strideprefetch", "Stride Prefetching", false, false)
-  static RegisterPass<StridePrefetch> X("projpass", "LICM Pass", true, true);
+INITIALIZE_PASS_BEGIN(StridePrefetch, "strideprefetch", "Stride Prefetching", false, false)
+INITIALIZE_PASS_DEPENDENCY(DominatorTree)
+INITIALIZE_PASS_DEPENDENCY(LoopInfo)
+INITIALIZE_PASS_DEPENDENCY(LoopSimplify)
+INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
+INITIALIZE_PASS_END(StridePrefetch, "strideprefetch", "Stride Prefetching", false, false)
+static RegisterPass<StridePrefetch> X("projpass", "LICM Pass", true, true);
 
 bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
   Changed = false;
@@ -144,7 +144,8 @@ void StridePrefetch::loopOver(DomTreeNode *N) {
     for (BasicBlock::iterator II = BB->begin(), E = BB->end(); II != E; II++) {
       Instruction *I = II;
       if (dyn_cast<LoadInst>(I)) {
-        actuallyInsertPrefetch(getInfo(I), I, getInfo(I)->dominant_stride);
+        // TODO - decide if this is an instruction to actually profile?
+        profile(I);
       }
     }
 
@@ -196,7 +197,7 @@ void StridePrefetch::profile(Instruction *inst) {
   int top_4_freq = 0;
   int zeroDiff = 0;
 
-  loadInfo profData = *getInfo(inst);
+  loadInfo *profData = getInfo(inst);
 
   if(PI->getExecutionCount(inst->getParent()) <= FT) {
     return;
@@ -206,14 +207,14 @@ void StridePrefetch::profile(Instruction *inst) {
     return;
   }
   
-  freq1 = profData.top_freqs[0];
-  num_strides = profData.num_strides;
+  freq1 = profData->top_freqs[0];
+  num_strides = profData->num_strides;
   
-  for(unsigned int i = 0; i < profData.top_freqs.size(); i++) {
-    top_4_freq+=profData.top_freqs[i];
+  for(unsigned int i = 0; i < profData->top_freqs.size(); i++) {
+    top_4_freq += profData->top_freqs[i];
   }
   
-  zeroDiff = profData.num_zero_diff;
+  zeroDiff = profData->num_zero_diff;
   
   //cache line stuff...not sure yet?
   if (freq1/num_strides > SSST_T) {
@@ -232,6 +233,7 @@ void StridePrefetch::profile(Instruction *inst) {
     printf("adding to none\n");
   }
 }
+
 //insert an alloca to hold address
 //insert an alloca to hold stride
 //insert a subtract stride = addr(load) - scratch
@@ -254,7 +256,8 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
   storePtr = new StoreInst(scratchPtr, loadAddr, inst);
 
   //stride = addr(load) - scratch
-  subPtr = BinaryOperator::Create(Instruction::Sub,
+  subPtr = BinaryOperator::Create(
+    Instruction::Sub,
     loadAddr,
     scratchPtr,
     "stride",
@@ -265,6 +268,7 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
 
 //inserts prefetch(addr(inst)+sub*K)
 void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator *sub) {
+
 }
 
 //insert just prefetch(P+K*S)
@@ -284,24 +288,29 @@ void StridePrefetch::insertPMST(Instruction *inst, double K) {
 //p?prefetch(P+K*stride)
 void StridePrefetch::insertWSST(Instruction *inst, double K) {
   BinaryOperator *subPtr = scratchAndSub(inst);
-  ICmpInst *ICmpPtr;
-  loadInfo profData = *getInfo(inst);
-  int profiled_stride = profData.profiled_stride;
-  ICmpPtr = new ICmpInst(inst, 
-      ICmpInst::ICMP_EQ,
-      subPtr,
-      ConstantInt::get(dyn_cast<LoadInst>(inst)->getPointerOperand()->getType(), profiled_stride), 
-      "cmpweak");
+  loadInfo *profData = getInfo(inst);
+  int profiled_stride = profData->profiled_stride;
+  
+  ICmpInst *ICmpPtr = new ICmpInst(
+    inst, 
+    ICmpInst::ICMP_EQ,
+    subPtr,
+    ConstantInt::get(dyn_cast<LoadInst>(inst)->getPointerOperand()->getType(), profiled_stride), 
+    "cmpweak"
+  );
+
   insertPrefetch(inst, K, subPtr);
 }
 
 void StridePrefetch::insertLoad(Instruction *inst) {
+  loadInfo *profData = getInfo(inst);
+  
   //determine K
   double K = 0;
-  loadInfo profData = *getInfo(inst);
-  double dataArea = profData.dominant_stride * profData.trip_count;
+  double dataArea = profData->dominant_stride * profData->trip_count;
   double C = MAXPREFETCHDISTANCE;
-  K = min((double) profData.trip_count/TT, C);
+  K = min((double) profData->trip_count/TT, C);
+
   //we can incorporate cache stuff if need be
   //call the corresponding load list
   set <Instruction*>::iterator loadIT;
