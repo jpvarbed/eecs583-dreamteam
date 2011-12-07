@@ -8,7 +8,7 @@
    Efficient Discovery of Regular Stride Patterns in Irregular
    Programs and Its Use in Compiler Prefetching
    by Youfeng Wu
- */
+*/
 
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Constants.h"
@@ -202,7 +202,7 @@ void StridePrefetch::profile(Instruction *inst) {
   if(PI->getExecutionCount(inst->getParent()) <= FT) {
     return;
   }
-  //assume that loads passed in are in loops
+  // assume that loads passed in are in loops
   if(PI->getExecutionCount(Preheader) <= TT) {
     return;
   }
@@ -216,7 +216,7 @@ void StridePrefetch::profile(Instruction *inst) {
   
   zeroDiff = profData->num_zero_diff;
   
-  //cache line stuff...not sure yet?
+  // cache line stuff...not sure yet?
   if (freq1/num_strides > SSST_T) {
     SSST_loads.insert(inst);
     printf("adding to SSST\n");
@@ -234,60 +234,59 @@ void StridePrefetch::profile(Instruction *inst) {
   }
 }
 
-//insert an alloca to hold address
-//insert an alloca to hold stride
-//insert a subtract stride = addr(load) - scratch
-//scratch = addr(load)
+// insert an alloca to hold address
+// insert an alloca to hold stride
+// insert a subtract stride = addr(load) - scratch
+// scratch = addr(load)
 BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
-  AllocaInst *scratchPtr;
-  StoreInst *storePtr;
-  BinaryOperator *subPtr;
-  //inst->bb->fcn->module
   Module *M = inst->getParent()->getParent()->getParent();
   BasicBlock *entryBlock = &inst->getParent()->getParent()->getEntryBlock();
 
-  StringRef X = "scratch";
-  StringRef Name = inst->getName();
-  //make alloca for scratch reg
+  // make alloca for scratch reg
   Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
-  scratchPtr = new AllocaInst(loadAddr->getType(), X + Name, entryBlock); 
+  AllocaInst *scratchPtr = new AllocaInst(
+    loadAddr->getType(),
+    "scratch" + inst->getName(),
+    entryBlock
+  ); 
 
-  //store[scratchPtr] = loadAddr
-  storePtr = new StoreInst(scratchPtr, loadAddr, inst);
+  // store[scratchPtr] = loadAddr
+  StoreInst *storePtr = new StoreInst(scratchPtr, loadAddr, inst);
 
-  //stride = addr(load) - scratch
-  subPtr = BinaryOperator::Create(
+  // stride = addr(load) - scratch
+  BinaryOperator *subPtr = BinaryOperator::Create(
     Instruction::Sub,
     loadAddr,
     scratchPtr,
     "stride",
-    inst
+    storePtr
   );
   return subPtr;
 }
 
-//inserts prefetch(addr(inst)+sub*K)
+// inserts prefetch(addr(inst)+sub*K)
 void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator *sub) {
 
 }
 
-//insert just prefetch(P+K*S)
+// insert just prefetch(P+K*S)
 void StridePrefetch::insertSSST(Instruction *inst, double K) {
   insertPrefetch(inst, K, NULL);
 }
 
-//scratch sub
-//prefetch(addr(load)+K*stride) before the load, K is rounded to a power of 2, 
+// scratch sub
+// prefetch(addr(load)+K*stride) before the load, K is rounded to a power of 2, 
 void StridePrefetch::insertPMST(Instruction *inst, double K) {
   BinaryOperator *subPtr = scratchAndSub(inst);
   insertPrefetch(inst, K, subPtr);
 }
 
-//scratch sub
-//p=(stride==profiled stride)
-//p?prefetch(P+K*stride)
+// scratch sub
+// p=(stride==profiled stride)
+// p?prefetch(P+K*stride)
 void StridePrefetch::insertWSST(Instruction *inst, double K) {
   BinaryOperator *subPtr = scratchAndSub(inst);
+
   loadInfo *profData = getInfo(inst);
   int profiled_stride = profData->profiled_stride;
   
@@ -305,14 +304,14 @@ void StridePrefetch::insertWSST(Instruction *inst, double K) {
 void StridePrefetch::insertLoad(Instruction *inst) {
   loadInfo *profData = getInfo(inst);
   
-  //determine K
+  // TODO: determine K
   double K = 0;
   double dataArea = profData->dominant_stride * profData->trip_count;
   double C = MAXPREFETCHDISTANCE;
   K = min((double) profData->trip_count/TT, C);
 
-  //we can incorporate cache stuff if need be
-  //call the corresponding load list
+  // we can incorporate cache stuff if need be
+  // call the corresponding load list
   set <Instruction*>::iterator loadIT;
   if (PMST_loads.count(inst)) {
     insertPMST(inst,K);
