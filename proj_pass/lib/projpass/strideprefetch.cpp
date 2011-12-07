@@ -250,6 +250,7 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
     entryBlock
   ); 
 
+  // TODO this is not a mov!
   // store[scratchPtr] = loadAddr
   StoreInst *storePtr = new StoreInst(scratchPtr, loadAddr, inst);
 
@@ -266,7 +267,17 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
 
 // inserts prefetch(addr(inst)+sub*K)
 void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator *sub) {
+  Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
 
+  Value *shiftResult; // TODO set shiftResult = K*stride... aka shift stride over by K bits (round K to power of two)
+
+  BinaryOperator *addition = BinaryOperator::Create(
+    Instruction::Add,
+    loadAddr,
+    shiftResult,
+    "addition",
+    inst
+  );
 }
 
 // insert just prefetch(P+K*S)
