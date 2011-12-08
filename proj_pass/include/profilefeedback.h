@@ -22,7 +22,7 @@
 #include <sys/stat.h>
 #include <vector>
 #include <set>
-#define FT 10000
+#define FT 2000
 #define TT 100
 #define SSST_T 10
 #define PMST_T 10

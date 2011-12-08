@@ -90,7 +90,7 @@ namespace {
       void insertPMST(Instruction *inst, double K);
       void insertWSST(Instruction *inst, double K);
       void insertLoad(Instruction *inst);
-      void actuallyInsertPrefetch(loadInfo* load_info, Instruction *before, long address, int locality = 3);
+      void actuallyInsertPrefetch(loadInfo* load_info, Instruction *before, Instruction *address, int locality = 3);
       void loopOver(DomTreeNode *N);
   };
 }
@@ -145,7 +145,7 @@ void StridePrefetch::loopOver(DomTreeNode *N) {
       Instruction *I = II;
       if (dyn_cast<LoadInst>(I)) {
         // TODO - decide if this is an instruction to actually profile?
-        //profile(I);
+        profile(I);
       }
     }
 
@@ -165,7 +165,7 @@ loadInfo* StridePrefetch::getInfo(Instruction* inst) {
   return findInfo->second;
 }
 
-void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info, Instruction *before, long address, int locality) {
+void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info, Instruction *before, Instruction *address, int locality) {
   errs() << "Prefetching #"<<load_info->load_id<<" with addr: "<<address<<"\n";
 
   LLVMContext &context = Preheader->getParent()->getContext();
@@ -181,8 +181,8 @@ void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info, Instruction *be
   );
   
   vector<Value*> Args(3);
-  Constant *tmp = ConstantInt::get(llvm::Type::getInt8Ty(context), address);
-  Args[0] = ConstantExpr::getIntToPtr(tmp, llvm::Type::getInt8PtrTy(context));
+  //Constant *tmp = ConstantInt::get(llvm::Type::getInt8Ty(context), address);
+  Args[0] = address; //ConstantExpr::getIntToPtr(tmp, llvm::Type::getInt8PtrTy(context));
   Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(context), 0);
   // Args[2] temporal locality value? ranges from 0 - 3
   Args[2] = ConstantInt::get(llvm::Type::getInt32Ty(context), locality);
@@ -198,7 +198,7 @@ void StridePrefetch::profile(Instruction *inst) {
   int zeroDiff = 0;
 
   loadInfo *profData = getInfo(inst);
-
+  
   if(PI->getExecutionCount(inst->getParent()) <= FT) {
     return;
   }
@@ -219,18 +219,18 @@ void StridePrefetch::profile(Instruction *inst) {
   // cache line stuff...not sure yet?
   if (freq1/num_strides > SSST_T) {
     SSST_loads.insert(inst);
-    printf("adding to SSST\n");
+    errs() << "adding to SSST\n";
   }
   else if ((top_4_freq/num_strides > PMST_T) && zeroDiff/num_strides > PMST_T) {
     PMST_loads.insert(inst);
-    printf("adding to PMST\n");
+    errs() << "adding to PMST\n";
   }
   else if ((freq1/num_strides > WSST_T) && (zeroDiff/num_strides > PMST_T)) {
     WSST_loads.insert(inst);
-    printf("adding to WSST\n");
+    errs() << "adding to WSST\n";
   }
   else {
-    printf("adding to none\n");
+    errs() << "adding to none\n";
   }
 }
 
@@ -267,9 +267,29 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
 
 // inserts prefetch(addr(inst)+sub*K)
 void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator *sub) {
+  LLVMContext &context = Preheader->getParent()->getContext();
+
   Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
 
-  Value *shiftResult; // TODO set shiftResult = K*stride... aka shift stride over by K bits (round K to power of two)
+  // TODO set shiftResult = K*stride... aka shift stride over by K bits (round K to power of two)
+
+  unsigned int newK = (unsigned int)K;
+  // round up to the next power of 2
+  newK--;
+  newK |= newK >> 1;
+  newK |= newK >> 2;
+  newK |= newK >> 4;
+  newK |= newK >> 8;
+  newK |= newK >> 16;
+  newK++;
+
+  BinaryOperator *shiftResult = BinaryOperator::Create(
+    Instruction::Shl,
+    sub,
+    ConstantInt::get(llvm::Type::getInt32Ty(context), newK),
+    "shiftleft",
+    inst
+  );
 
   BinaryOperator *addition = BinaryOperator::Create(
     Instruction::Add,
@@ -278,6 +298,8 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
     "addition",
     inst
   );
+
+  actuallyInsertPrefetch(getInfo(inst), inst, addition, 3); // TODO locality?
 }
 
 // insert just prefetch(P+K*S)
