@@ -1,8 +1,15 @@
 default:
+	 make clean
 	 g++ correct.c -o correct_correct
 	 ./correct_correct > output_correct
 	 llvm-gcc -emit-llvm correct.c -c -o correct.bc
 	 opt -loop-simplify correct.bc -o correct.ls.bc
+	 llc correct.ls.bc -o correct.ls.s
+	 g++ -o correct.ls correct.ls.s
+	 ./correct.ls > output_correct_ls
+	 opt -mem2reg correct.ls.bc -o correct.ls.mem2reg.bc
+	 llc correct.ls.mem2reg.bc -o correct.ls.mem2reg.s
+	 g++ -o correct.ls.mem2reg correct.ls.mem2reg.s
 	 opt -insert-edge-profiling correct.ls.bc -o correct.profile.bc
 	 llc correct.profile.bc -o correct.profile.s
 	 g++ -o correct.profile correct.profile.s /y/students/mviscomi/llvm-install/Release/lib/profile_rt.so
@@ -27,7 +34,9 @@ default:
 	rm -f cfg.main.dot
 
 	-./correct.slicm.mem2reg > output_slicm
-	diff output_correct output_slicm
+	-./correct.ls.mem2reg > output_correct_ls_mem2reg
+	tail output_correct_ls_mem2reg
+	tail output_slicm
 	
 clean:
 	rm -f llvmprof.out

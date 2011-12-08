@@ -145,7 +145,7 @@ void StridePrefetch::loopOver(DomTreeNode *N) {
       Instruction *I = II;
       if (dyn_cast<LoadInst>(I)) {
         // TODO - decide if this is an instruction to actually profile?
-        profile(I);
+        //profile(I);
       }
     }
 
