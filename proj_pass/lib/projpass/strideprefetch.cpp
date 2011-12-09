@@ -270,35 +270,49 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
   LLVMContext &context = Preheader->getParent()->getContext();
 
   Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
+  BinaryOperator *addition;
 
-  // TODO set shiftResult = K*stride... aka shift stride over by K bits (round K to power of two)
+  if (sub == NULL) {
+    // S is the dominant_stride in loadInfo
+    int kXs = (int)K * getInfo(inst)->dominant_stride;
 
-  unsigned int newK = (unsigned int)K;
-  // round up to the next power of 2
-  newK--;
-  newK |= newK >> 1;
-  newK |= newK >> 2;
-  newK |= newK >> 4;
-  newK |= newK >> 8;
-  newK |= newK >> 16;
-  newK++;
+    addition = BinaryOperator::Create(
+      Instruction::Add,
+      loadAddr,
+      ConstantInt::get(llvm::Type::getInt32Ty(context), kXs),
+      "addition",
+      inst
+    );
+  } else {
+    // TODO set shiftResult = K*stride... aka shift stride over by K bits (round K to power of two)
 
-  BinaryOperator *shiftResult = BinaryOperator::Create(
-    Instruction::Shl,
-    sub,
-    ConstantInt::get(llvm::Type::getInt32Ty(context), newK),
-    "shiftleft",
-    inst
-  );
+    unsigned int newK = (unsigned int)K;
+    // round up to the next power of 2
+    newK--;
+    newK |= newK >> 1;
+    newK |= newK >> 2;
+    newK |= newK >> 4;
+    newK |= newK >> 8;
+    newK |= newK >> 16;
+    newK++;
 
-  BinaryOperator *addition = BinaryOperator::Create(
-    Instruction::Add,
-    loadAddr,
-    shiftResult,
-    "addition",
-    inst
-  );
+    BinaryOperator *shiftResult = BinaryOperator::Create(
+      Instruction::Shl,
+      sub,
+      ConstantInt::get(llvm::Type::getInt32Ty(context), newK),
+      "shiftleft",
+      inst
+    );
 
+    addition = BinaryOperator::Create(
+      Instruction::Add,
+      loadAddr,
+      shiftResult,
+      "addition",
+      inst
+    );
+  }
+  
   actuallyInsertPrefetch(getInfo(inst), inst, addition, 3); // TODO locality?
 }
 
@@ -347,10 +361,10 @@ void StridePrefetch::insertLoad(Instruction *inst) {
   // call the corresponding load list
   set <Instruction*>::iterator loadIT;
   if (PMST_loads.count(inst)) {
-    insertPMST(inst,K);
+    insertPMST(inst, K);
   }
   else if (SSST_loads.count(inst)) {
-    insertSSST(inst,K);
+    insertSSST(inst, K);
   }
   else if (WSST_loads.count(inst)) {
     insertWSST(inst, K);
