@@ -9,6 +9,13 @@
    Programs and Its Use in Compiler Prefetching
    by Youfeng Wu
 */
+#define DOUT
+
+#ifdef DOUT
+# define DOUT(x) x
+#else
+# define DOUT(x) do {} while (0)
+#endif
 
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Constants.h"
@@ -35,6 +42,8 @@
 #include "LAMPLoadProfile.h"
 #include <vector>
 #include <algorithm>
+#include <cmath>
+
 using namespace llvm;
 
 namespace llvm {
@@ -85,12 +94,14 @@ namespace {
       loadInfo* getInfo(Instruction* inst);
       void profile(Instruction* inst);
       BinaryOperator *scratchAndSub(Instruction *inst);
+      void insertPrefetchInsts(const set<Instruction*> loads);
       void insertPrefetch(Instruction *inst, double K, BinaryOperator *sub);
       void insertSSST(Instruction *inst, double K);
       void insertPMST(Instruction *inst, double K);
       void insertWSST(Instruction *inst, double K);
       void insertLoad(Instruction *inst);
-      void actuallyInsertPrefetch(loadInfo* load_info, Instruction *before, Instruction *address, int locality = 3);
+      void actuallyInsertPrefetch(loadInfo* load_info, Instruction *before, 
+          Instruction *address, int locality = 3);
       void loopOver(DomTreeNode *N);
   };
 }
@@ -125,11 +136,22 @@ bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
 
   loopOver(DT->getNode(L->getHeader()));
 
+  insertPrefetchInsts(SSST_loads); 
+  insertPrefetchInsts(PMST_loads); 
+  insertPrefetchInsts(WSST_loads); 
+
   // clear varaibles for the next runOnLoop iteration
   CurrentLoop = 0;
   Preheader = 0;
 
   return Changed;
+}
+
+// Inserts prefetch instructions for the loads that are SSST, PMST, and WSST.
+void StridePrefetch::insertPrefetchInsts(const set<Instruction*> loads) {
+  set<Instruction*>::const_iterator loadIter;
+  for (loadIter = loads.begin(); loadIter != loads.end(); ++loadIter)
+    insertLoad(*loadIter);
 }
 
 void StridePrefetch::loopOver(DomTreeNode *N) {
@@ -165,7 +187,8 @@ loadInfo* StridePrefetch::getInfo(Instruction* inst) {
   return findInfo->second;
 }
 
-void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info, Instruction *before, Instruction *address, int locality) {
+void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info, 
+    Instruction *before, Instruction *address, int locality) {
   errs() << "Prefetching #"<<load_info->load_id<<" with addr: "<<address<<"\n";
 
   LLVMContext &context = Preheader->getParent()->getContext();
@@ -199,6 +222,7 @@ void StridePrefetch::profile(Instruction *inst) {
 
   loadInfo *profData = getInfo(inst);
   
+  DOUT(errs() << "Execution count is: " << PI->getExecutionCount(inst->getParent());)
   if(PI->getExecutionCount(inst->getParent()) <= FT) {
     return;
   }
@@ -274,7 +298,8 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
 
   if (sub == NULL) {
     // S is the dominant_stride in loadInfo
-    int kXs = (int)K * getInfo(inst)->dominant_stride;
+    int S = getInfo(inst)->dominant_stride;
+    int kXs = (int)K * S;
 
     addition = BinaryOperator::Create(
       Instruction::Add,
@@ -296,6 +321,9 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
     newK |= newK >> 16;
     newK++;
 
+    // take the log base 2 of K to get the number of bits to shift left
+    newK = log2(newK);
+    
     BinaryOperator *shiftResult = BinaryOperator::Create(
       Instruction::Shl,
       sub,
@@ -373,3 +401,4 @@ void StridePrefetch::insertLoad(Instruction *inst) {
     errs() << "inst not inserted\n";
   }
 }
+
