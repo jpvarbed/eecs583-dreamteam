@@ -9,13 +9,6 @@
    Programs and Its Use in Compiler Prefetching
    by Youfeng Wu
 */
-#define DOUT
-
-#ifdef DOUT
-# define DOUT(x) x
-#else
-# define DOUT(x) do {} while (0)
-#endif
 
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Constants.h"
@@ -202,16 +195,26 @@ void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info,
     llvm::Type::getInt32Ty(context),
     (Type *) 0
   );
-  
+ 
+  AllocaInst *allocaAddr = new AllocaInst(
+    address->getType(),
+    "allocaaddr"
+  );
+  allocaAddr->insertBefore(before);
+
+ // (new StoreInst(address, allocaAddr))->insertAfter(allocaAddr);
+
+  //BitCastInst *newthing = new BitCastInst(allocaAddr, llvm::Type::getInt8PtrTy(context), "test", before);
+/*
   vector<Value*> Args(3);
   //Constant *tmp = ConstantInt::get(llvm::Type::getInt8Ty(context), address);
-  Args[0] = address; //ConstantExpr::getIntToPtr(tmp, llvm::Type::getInt8PtrTy(context));
+  Args[0] = newthing; //ConstantExpr::getIntToPtr(tmp, llvm::Type::getInt8PtrTy(context));
   Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(context), 0);
   // Args[2] temporal locality value? ranges from 0 - 3
   Args[2] = ConstantInt::get(llvm::Type::getInt32Ty(context), locality);
 
   // insert the prefetch call
-  CallInst::Create(prefetchFn, Args.begin(), Args.end(), "", before);
+  CallInst::Create(prefetchFn, Args.begin(), Args.end(), "", before);*/
 }
 
 void StridePrefetch::profile(Instruction *inst) {
@@ -222,7 +225,6 @@ void StridePrefetch::profile(Instruction *inst) {
 
   loadInfo *profData = getInfo(inst);
   
-  DOUT(errs() << "Execution count is: " << PI->getExecutionCount(inst->getParent());)
   if(PI->getExecutionCount(inst->getParent()) <= FT) {
     return;
   }
@@ -243,7 +245,7 @@ void StridePrefetch::profile(Instruction *inst) {
   // cache line stuff...not sure yet?
   if (freq1/num_strides > SSST_T) {
     SSST_loads.insert(inst);
-    errs() << "adding to SSST\n";
+    errs() << "adding to SSST ("<<profData->dominant_stride<<")\n";
   }
   else if ((top_4_freq/num_strides > PMST_T) && zeroDiff/num_strides > PMST_T) {
     PMST_loads.insert(inst);
@@ -293,8 +295,9 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
 void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator *sub) {
   LLVMContext &context = Preheader->getParent()->getContext();
 
-  Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
   BinaryOperator *addition;
+  Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
+  LoadInst *loadAddrLoaded = new LoadInst(loadAddr, "loadaddr", inst);
 
   if (sub == NULL) {
     // S is the dominant_stride in loadInfo
@@ -303,7 +306,7 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
 
     addition = BinaryOperator::Create(
       Instruction::Add,
-      loadAddr,
+      loadAddrLoaded,
       ConstantInt::get(llvm::Type::getInt32Ty(context), kXs),
       "addition",
       inst
@@ -334,7 +337,7 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
 
     addition = BinaryOperator::Create(
       Instruction::Add,
-      loadAddr,
+      loadAddrLoaded,
       shiftResult,
       "addition",
       inst
