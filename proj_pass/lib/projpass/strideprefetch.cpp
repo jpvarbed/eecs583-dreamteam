@@ -196,7 +196,8 @@ void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info,
     (Type *) 0
   );
  
-  BitCastInst *newAddr = new BitCastInst(address, llvm::Type::getInt8PtrTy(context), "bitcast", before);
+  IntToPtrInst *newAddr = new IntToPtrInst(address, llvm::Type::getInt8PtrTy(context), "inttoptr", before);
+  //BitCastInst *newAddr = new BitCastInst(address, llvm::Type::getInt8PtrTy(context), "bitcast", before);
   
   vector<Value*> Args(3);
   //Constant *tmp = ConstantInt::get(llvm::Type::getInt8Ty(context), address);
@@ -336,7 +337,7 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
     );
   }
   
-  actuallyInsertPrefetch(getInfo(inst), inst, addition, 3); // TODO locality?
+  actuallyInsertPrefetch(getInfo(inst), inst, addition, 0);
 }
 
 // insert just prefetch(P+K*S)
