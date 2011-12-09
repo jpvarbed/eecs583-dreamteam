@@ -196,25 +196,17 @@ void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info,
     (Type *) 0
   );
  
-  AllocaInst *allocaAddr = new AllocaInst(
-    address->getType(),
-    "allocaaddr"
-  );
-  allocaAddr->insertBefore(before);
-
- // (new StoreInst(address, allocaAddr))->insertAfter(allocaAddr);
-
-  //BitCastInst *newthing = new BitCastInst(allocaAddr, llvm::Type::getInt8PtrTy(context), "test", before);
-/*
+  BitCastInst *newAddr = new BitCastInst(address, llvm::Type::getInt8PtrTy(context), "bitcast", before);
+  
   vector<Value*> Args(3);
   //Constant *tmp = ConstantInt::get(llvm::Type::getInt8Ty(context), address);
-  Args[0] = newthing; //ConstantExpr::getIntToPtr(tmp, llvm::Type::getInt8PtrTy(context));
+  Args[0] = newAddr; //ConstantExpr::getIntToPtr(tmp, llvm::Type::getInt8PtrTy(context));
   Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(context), 0);
   // Args[2] temporal locality value? ranges from 0 - 3
   Args[2] = ConstantInt::get(llvm::Type::getInt32Ty(context), locality);
 
   // insert the prefetch call
-  CallInst::Create(prefetchFn, Args.begin(), Args.end(), "", before);*/
+  CallInst::Create(prefetchFn, Args.begin(), Args.end(), "", before);
 }
 
 void StridePrefetch::profile(Instruction *inst) {
