@@ -195,7 +195,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
     unsigned int freq[4];
     sscanf(
       s.c_str(),
-      "%d %d %d %d %u %u %u %u",
+      "%d %d %d %d %d %u %u %u %u",
       &(load_info->load_id),
       &(load_info->num_strides),
       &(load_info->exec_count),

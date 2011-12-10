@@ -215,7 +215,7 @@ void StridePrefetch::profile(Instruction *inst) {
   int zeroDiff = 0;
 
   loadInfo *profData = getInfo(inst);
-
+errs() << PI->getExecutionCount(inst->getParent())<<" is the exec count\n";
   // set the trip_count variable
   profData->trip_count = PI->getExecutionCount(inst->getParent()) / PI->getExecutionCount(Preheader);
   
@@ -235,7 +235,7 @@ void StridePrefetch::profile(Instruction *inst) {
   }
   
   zeroDiff = profData->num_zero_diff;
-  
+ errs() << freq1 << " / "<<exec_count<<" > "<<SSST_T<<"\n"; 
   // cache line stuff...not sure yet?
   if (freq1 / exec_count > SSST_T) {
     SSST_loads.insert(inst);
@@ -291,7 +291,7 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
 
   BinaryOperator *addition;
   Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
-  LoadInst *loadAddrLoaded = new LoadInst(loadAddr, "loadaddr", inst);
+  PtrToIntInst *newLoadAddr = new PtrToIntInst(loadAddr, llvm::Type::getInt32Ty(context), "bitcast", inst);
 
   if (sub == NULL) {
     // S is the dominant_stride in loadInfo
@@ -300,7 +300,7 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
 
     addition = BinaryOperator::Create(
       Instruction::Add,
-      loadAddrLoaded,
+      newLoadAddr,
       ConstantInt::get(llvm::Type::getInt32Ty(context), kXs),
       "addition",
       inst
@@ -329,7 +329,7 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
 
     addition = BinaryOperator::Create(
       Instruction::Add,
-      loadAddrLoaded,
+      newLoadAddr,
       shiftResult,
       "addition",
       inst
