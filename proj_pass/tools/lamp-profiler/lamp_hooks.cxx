@@ -163,6 +163,9 @@ void LAMP_print_StrideProfile(ofstream &stream) {
     for (unsigned int i = 0; i < topStrides->size(); i++) {
       stream << topStrides->at(i).second << " ";
     }
+    for (unsigned int i = topStrides->size(); i < 4; i++ ) {
+      stream << "0 ";
+    }
 
     stream << endl;
   }

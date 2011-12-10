@@ -30,6 +30,7 @@
 #define WSST_T  0.25
 #define WSSTD_T 0.10
 #define MAXPREFETCHDISTANCE 8
+#define NUM_TOP_FREQ 4
 
 using namespace llvm;
 using namespace std;

@@ -207,7 +207,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
     llvm::errs() << "Stride Profile ("<<LoadIdToLoadInst[load_info->load_id]<<"): "<<s<<"\n";
     Instruction *loadinstr = LoadIdToLoadInst[load_info->load_id];
 
-    for (int a = 0; a < 4; a++) {
+    for (int a = 0; a < NUM_TOP_FREQ; a++) {
       load_info->top_freqs.push_back(freq[a]);
     }
     sort(load_info->top_freqs.rbegin(), load_info->top_freqs.rend()); // sort desc order

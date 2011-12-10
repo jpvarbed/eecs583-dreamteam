@@ -23,13 +23,13 @@ LoadStride::~LoadStride() {
 }
 
 void LoadStride::updateTopStrideValues(long value) {
-  if (value == 0) {
-    return; // don't keep track of 0 for the top stride values
-  }
   long count = strideValuesToCount[value];
   if (count > topStrideHolder.second) {
     topStrideHolder.first = value;
     topStrideHolder.second = count;
+  }
+  if (value == 0) {
+    return; // don't keep track of 0 for the top stride values
   }
   for (int i = 0; i < topStrideValues.size(); i++) {
     if (topStrideValues[i].first == value) {
