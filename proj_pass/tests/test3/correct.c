@@ -2,7 +2,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
-#define INDEX 1000
+#define INDEX 10000
 
 struct timeval t_start, t_end;
 double t_diff;
@@ -22,7 +22,7 @@ int main(void)
 		
 		gettimeofday(&t_start,NULL);
 
-		for (i=0;i<INDEX;i++){
+		/*for (i=0;i<INDEX;i++){
 
 			for (j=0;j<INDEX;j++){
 				// create alias of different frequency
@@ -42,8 +42,16 @@ int main(void)
 				c[i][j] = temp_1 + temp_2 + temp_3;
         //printf("%d\n", c[i][j]);
 			}
-		}
-
+		}*/
+    for (i=0; i<INDEX; i++) {
+      int tmp4 = c[0][i];
+      int tmp5;
+      for (j = 0; j<500;j++) {
+        tmp5 = tmp4 * 50;
+      }
+      d[i][50] = tmp5 * 5939 + 1;
+      a[2] = tmp5 / 2;
+    }
     gettimeofday(&t_end,NULL);
     t_diff = (t_end.tv_sec - t_start.tv_sec) + (double)(t_end.tv_usec - t_start.tv_usec)/1000000;
 	  printf(" ---  time spent = %.6f  --- \n", t_diff);

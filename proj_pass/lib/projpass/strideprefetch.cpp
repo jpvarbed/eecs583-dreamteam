@@ -117,6 +117,11 @@ static RegisterPass<StridePrefetch> X("projpass", "LICM Pass", true, true);
 bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
   Changed = false;
 
+  // clear data structures
+  SSST_loads.clear();
+  PMST_loads.clear();
+  WSST_loads.clear();
+
   LI = &getAnalysis<LoopInfo>();
   PI = &getAnalysis<ProfileInfo>();
   LP = &getAnalysis<LAMPLoadProfile>();
@@ -223,7 +228,7 @@ void StridePrefetch::profile(Instruction *inst) {
     return;
   }
   // assume that loads passed in are in loops
-  if (PI->getExecutionCount(Preheader) <= TT) {
+  if (profData->trip_count <= TT) {
     return;
   }
   
