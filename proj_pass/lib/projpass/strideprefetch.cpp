@@ -215,7 +215,7 @@ void StridePrefetch::profile(Instruction *inst) {
   int zeroDiff = 0;
 
   loadInfo *profData = getInfo(inst);
-errs() << PI->getExecutionCount(inst->getParent())<<" is the exec count\n";
+  
   // set the trip_count variable
   profData->trip_count = PI->getExecutionCount(inst->getParent()) / PI->getExecutionCount(Preheader);
   
@@ -235,7 +235,8 @@ errs() << PI->getExecutionCount(inst->getParent())<<" is the exec count\n";
   }
   
   zeroDiff = profData->num_zero_diff;
- errs() << freq1 << " / "<<exec_count<<" > "<<SSST_T<<"\n"; 
+ 
+  errs() << freq1 << " / "<<exec_count<<" > "<<SSST_T<<"\n"; 
   // cache line stuff...not sure yet?
   if (freq1 / exec_count > SSST_T) {
     SSST_loads.insert(inst);

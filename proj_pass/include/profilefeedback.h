@@ -42,7 +42,7 @@ struct loadInfo {
     int num_zero_diff;      // frequency of a stride of 0
     int dominant_stride;    // value of the most frequent stride value
     int profiled_stride;    // ? TODO
-    int trip_count;         // ? TODO
+    int trip_count;         // calculated later in second pass
     vector<long> top_freqs; // top X frequencies for the top stride vlaues
 };
 
