@@ -217,7 +217,7 @@ void StridePrefetch::profile(Instruction *inst) {
   loadInfo *profData = getInfo(inst);
   
   // set the trip_count variable
-  profData->trip_count = PI->getExecutionCount(inst->getParent()) / PI->getExecutionCount(Preheader);
+  profData->trip_count = (int) PI->getExecutionCount(inst->getParent()) / PI->getExecutionCount(Preheader);
   
   if (PI->getExecutionCount(inst->getParent()) <= FT) {
     return;
@@ -260,7 +260,6 @@ void StridePrefetch::profile(Instruction *inst) {
 // insert a subtract stride = addr(load) - scratch
 // scratch = addr(load)
 BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
-  Module *M = inst->getParent()->getParent()->getParent();
   BasicBlock *entryBlock = &inst->getParent()->getParent()->getEntryBlock();
 
   // make alloca for scratch reg
@@ -297,7 +296,7 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
   if (sub == NULL) {
     // S is the dominant_stride in loadInfo
     int S = getInfo(inst)->dominant_stride;
-    int kXs = K * S;
+    int kXs = (int) K * S;
 
     addition = BinaryOperator::Create(
       Instruction::Add,
@@ -318,7 +317,7 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
     newK++;
 
     // take the log base 2 of K to get the number of bits to shift left
-    newK = log2(newK);
+    newK = (unsigned int) log2(newK);
     
     BinaryOperator *shiftResult = BinaryOperator::Create(
       Instruction::Shl,
