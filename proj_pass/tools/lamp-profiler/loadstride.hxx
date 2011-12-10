@@ -42,6 +42,10 @@ class LoadStride {
       return strideValuesToCount.size();
     }
 
+    unsigned int getStrideExecCount() {
+      return strideValues.size();
+    }
+
   private:
     static unsigned int TOPCOUNT;
 

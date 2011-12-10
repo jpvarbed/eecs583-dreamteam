@@ -198,6 +198,7 @@ bool LAMPLoadProfile::runOnModule(Module& M)
       "%d %d %d %d %u %u %u %u",
       &(load_info->load_id),
       &(load_info->num_strides),
+      &(load_info->exec_count),
       &(load_info->num_zero_diff),
       &(load_info->dominant_stride),
       &(freq[0]), &(freq[1]), &(freq[2]), &(freq[3])

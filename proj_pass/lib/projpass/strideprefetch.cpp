@@ -143,8 +143,9 @@ bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
 // Inserts prefetch instructions for the loads that are SSST, PMST, and WSST.
 void StridePrefetch::insertPrefetchInsts(const set<Instruction*> loads) {
   set<Instruction*>::const_iterator loadIter;
-  for (loadIter = loads.begin(); loadIter != loads.end(); ++loadIter)
+  for (loadIter = loads.begin(); loadIter != loads.end(); ++loadIter) {
     insertLoad(*loadIter);
+  }
 }
 
 void StridePrefetch::loopOver(DomTreeNode *N) {
@@ -197,13 +198,10 @@ void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info,
   );
  
   IntToPtrInst *newAddr = new IntToPtrInst(address, llvm::Type::getInt8PtrTy(context), "inttoptr", before);
-  //BitCastInst *newAddr = new BitCastInst(address, llvm::Type::getInt8PtrTy(context), "bitcast", before);
   
   vector<Value*> Args(3);
-  //Constant *tmp = ConstantInt::get(llvm::Type::getInt8Ty(context), address);
-  Args[0] = newAddr; //ConstantExpr::getIntToPtr(tmp, llvm::Type::getInt8PtrTy(context));
+  Args[0] = newAddr; 
   Args[1] = ConstantInt::get(llvm::Type::getInt32Ty(context), 0);
-  // Args[2] temporal locality value? ranges from 0 - 3
   Args[2] = ConstantInt::get(llvm::Type::getInt32Ty(context), locality);
 
   // insert the prefetch call
@@ -212,39 +210,42 @@ void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info,
 
 void StridePrefetch::profile(Instruction *inst) {
   int freq1 = 0;
-  int num_strides = 0;
+  int exec_count = 0;
   int top_4_freq = 0;
   int zeroDiff = 0;
 
   loadInfo *profData = getInfo(inst);
+
+  // set the trip_count variable
+  profData->trip_count = PI->getExecutionCount(inst->getParent()) / PI->getExecutionCount(Preheader);
   
-  if(PI->getExecutionCount(inst->getParent()) <= FT) {
+  if (PI->getExecutionCount(inst->getParent()) <= FT) {
     return;
   }
   // assume that loads passed in are in loops
-  if(PI->getExecutionCount(Preheader) <= TT) {
+  if (PI->getExecutionCount(Preheader) <= TT) {
     return;
   }
   
   freq1 = profData->top_freqs[0];
-  num_strides = profData->num_strides;
+  exec_count = profData->exec_count;
   
-  for(unsigned int i = 0; i < profData->top_freqs.size(); i++) {
+  for (unsigned int i = 0; i < profData->top_freqs.size(); i++) {
     top_4_freq += profData->top_freqs[i];
   }
   
   zeroDiff = profData->num_zero_diff;
   
   // cache line stuff...not sure yet?
-  if (freq1/num_strides > SSST_T) {
+  if (freq1 / exec_count > SSST_T) {
     SSST_loads.insert(inst);
     errs() << "adding to SSST ("<<profData->dominant_stride<<")\n";
   }
-  else if ((top_4_freq/num_strides > PMST_T) && zeroDiff/num_strides > PMST_T) {
+  else if ((top_4_freq / exec_count > PMST_T) && (zeroDiff / exec_count) > PMSTD_T) {
     PMST_loads.insert(inst);
     errs() << "adding to PMST\n";
   }
-  else if ((freq1/num_strides > WSST_T) && (zeroDiff/num_strides > PMST_T)) {
+  else if ((freq1 / exec_count > WSST_T) && (zeroDiff / exec_count > WSSTD_T)) {
     WSST_loads.insert(inst);
     errs() << "adding to WSST\n";
   }
@@ -295,7 +296,7 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
   if (sub == NULL) {
     // S is the dominant_stride in loadInfo
     int S = getInfo(inst)->dominant_stride;
-    int kXs = (int)K * S;
+    int kXs = K * S;
 
     addition = BinaryOperator::Create(
       Instruction::Add,
@@ -305,8 +306,6 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
       inst
     );
   } else {
-    // TODO set shiftResult = K*stride... aka shift stride over by K bits (round K to power of two)
-
     unsigned int newK = (unsigned int)K;
     // round up to the next power of 2
     newK--;
@@ -376,7 +375,7 @@ void StridePrefetch::insertLoad(Instruction *inst) {
   loadInfo *profData = getInfo(inst);
   
   // TODO: determine K
-  double K = 0;
+  double K;
   double dataArea = profData->dominant_stride * profData->trip_count;
   double C = MAXPREFETCHDISTANCE;
   K = min((double) profData->trip_count/TT, C);

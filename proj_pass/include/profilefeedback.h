@@ -24,9 +24,11 @@
 #include <set>
 #define FT 2000
 #define TT 100
-#define SSST_T 10
-#define PMST_T 10
-#define WSST_T 10
+#define SSST_T  0.70
+#define PMST_T  0.60
+#define PMSTD_T 0.40
+#define WSST_T  0.25
+#define WSSTD_T 0.10
 #define MAXPREFETCHDISTANCE 8
 
 using namespace llvm;
@@ -35,11 +37,12 @@ using namespace std;
 struct loadInfo {
     int load_id;            // the id for the load
     int num_strides;        // number of unique stride values
+    int exec_count;         // counts the total number of strides analyzed
     int num_zero_diff;      // frequency of a stride of 0
     int dominant_stride;    // value of the most frequent stride value
+    int profiled_stride;    // ? TODO
+    int trip_count;         // ? TODO
     vector<long> top_freqs; // top X frequencies for the top stride vlaues
-    int profiled_stride;    // ? TODO (all)
-    int trip_count;
 };
 
 void profile(Instruction *inst);

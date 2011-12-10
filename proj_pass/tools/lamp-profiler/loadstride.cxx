@@ -10,7 +10,7 @@
 #include "loadstride.hxx"
 using namespace std;
 
-unsigned int LoadStride::TOPCOUNT = 4; // number of top stride values to return
+unsigned int LoadStride::TOPCOUNT = 4; // number of top stride values to return (not including zero)
 
 LoadStride::LoadStride(uint32_t load_id) {
   loadID = load_id;
@@ -23,6 +23,9 @@ LoadStride::~LoadStride() {
 }
 
 void LoadStride::updateTopStrideValues(long value) {
+  if (value == 0) {
+    return; // don't keep track of 0 for the top stride values
+  }
   long count = strideValuesToCount[value];
   if (count > topStrideHolder.second) {
     topStrideHolder.first = value;
