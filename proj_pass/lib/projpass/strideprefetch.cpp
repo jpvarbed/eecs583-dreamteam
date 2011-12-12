@@ -164,7 +164,7 @@ void StridePrefetch::loopOver(DomTreeNode *N) {
 
     for (BasicBlock::iterator II = BB->begin(), E = BB->end(); II != E; II++) {
       Instruction *I = II;
-      if (dyn_cast<LoadInst>(I)) {
+      if (dyn_cast<LoadInst>(I) && getInfo(I) != NULL) {
         // TODO - decide if this is an instruction to actually profile?
         profile(I);
       }
@@ -181,7 +181,8 @@ loadInfo* StridePrefetch::getInfo(Instruction* inst) {
   map<Instruction*, loadInfo*>::iterator findInfo;
   findInfo = LP->LoadToLoadInfo.find(inst);
   if (findInfo == LP->LoadToLoadInfo.end()) {
-    errs() << "couldnt find " << *inst << " in getInfo\n";
+    errs() << "couldnt find " << *inst << " in getInfo!\n";
+    return NULL;
   }
   return findInfo->second;
 }

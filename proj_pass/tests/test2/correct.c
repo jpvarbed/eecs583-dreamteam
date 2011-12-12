@@ -30,11 +30,11 @@ int main(void)
 			// (1) test for different confict rate
 			for (j=0;j<INDEX;j++){
 				// create infrequent alias
-				if (j == (INDEX/2)){
+				if (j == (INDEX/2)){printf("happen1\n");
 					a[0] = 0;	
 				}
 				// create frequent alias
-				if ((j & 0x1) == 0){
+				if ((j & 0x1) == 0){printf("happen2\n");
 					a[1] ++;	
 					a[2] =10;	
 				}
@@ -46,7 +46,7 @@ int main(void)
 			// (2) test for different checking overhead
 			for (j=0;j<INDEX;j++){
 				// create infrequent alias
-				if ((j & 0x3f) == 0){
+				if ((j & 0x3f) == 0){printf("happen3\n");
 					b[0]++;	
 					b[1]++;	
 				}
@@ -55,7 +55,7 @@ int main(void)
 			}
 			for (j=0;j<INDEX;j++){
 				// create infrequent alias
-				if ((j & 0x3f) == 0){
+				if ((j & 0x3f) == 0){printf("happen4\n");
 					b[2]++;	
 					b[3]++;	
           //printf("%d %d\n", b[2], b[3]);
