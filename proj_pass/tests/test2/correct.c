@@ -30,41 +30,36 @@ int main(void)
 			// (1) test for different confict rate
 			for (j=0;j<INDEX;j++){
 				// create infrequent alias
-				if (j == (INDEX/2)){printf("happen1\n");
+				if (j == (INDEX/2)){
 					a[0] = 0;	
 				}
 				// create frequent alias
-				if ((j & 0x1) == 0){printf("happen2\n");
+				if ((j & 0x1) == 0){
 					a[1] ++;	
 					a[2] =10;	
 				}
 				// test hoist
 				c[i][j] = (a[0]*3)+ (a[1]*2+5) + a[2]*2;
-        //printf("%d\n", c[i][j]);
 			}
 
 			// (2) test for different checking overhead
 			for (j=0;j<INDEX;j++){
 				// create infrequent alias
-				if ((j & 0x3f) == 0){printf("happen3\n");
+				if ((j & 0x3f) == 0){
 					b[0]++;	
 					b[1]++;	
 				}
 				d[i][j] = (b[0]*3)+ (b[1]*2+5); 
-        //printf("%d\n", d[i][j]);
 			}
 			for (j=0;j<INDEX;j++){
 				// create infrequent alias
-				if ((j & 0x3f) == 0){printf("happen4\n");
+				if ((j & 0x3f) == 0){
 					b[2]++;	
 					b[3]++;	
-          //printf("%d %d\n", b[2], b[3]);
 				}
 				int temp = (b[2]+5 + b[3]*2) & 0x63;
-        //printf("%d\n", temp);
 				for (k =0; k++; k < INDEX2-1){
 					f[k+1][i&0x63][j&0x63] = f[k][i&0x63][j&0x63] +(temp & 0x1) ;      // avoid insert checking here?
-					//printf("%d\n", f[k+1][i&0x63][j&0x63]);
 				}
 			}
 		}
