@@ -360,15 +360,21 @@ void StridePrefetch::insertPMST(Instruction *inst, double K) {
 // p=(stride==profiled stride)
 // p?prefetch(P+K*stride)
 void StridePrefetch::insertWSST(Instruction *inst, double K) {
+    
+    LLVMContext &context = Preheader->getParent()->getContext();
+   
     BinaryOperator *subPtr = scratchAndSub(inst);
 
     loadInfo *profData = getInfo(inst);
     int profiled_stride = profData->dominant_stride;
+   
+    Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
+    PtrToIntInst *AddrToInt = new PtrToIntInst(loadAddr, llvm::Type::getInt32Ty(context), "bitcast", inst);
 
     ICmpInst *ICmpPtr = new ICmpInst(
             inst, 
             ICmpInst::ICMP_EQ,
-            subPtr,
+            AddrToInt,
             ConstantInt::get(dyn_cast<LoadInst>(inst)->getPointerOperand()->getType(), profiled_stride), 
             "cmpweak"
             );
