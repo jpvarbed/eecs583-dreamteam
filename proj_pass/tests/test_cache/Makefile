@@ -16,8 +16,7 @@ default:
 	 llc correct.profile.bc -o correct.profile.s
 	 g++ -o correct.profile correct.profile.s ${LLVMDIR}/Release/lib/profile_rt.so
 	 -./correct.profile > output_profile
-	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-insts -insert-lamp-profiling -insert-lamp-init < correct.ls.bc > correct.lamp.bc
-	 #opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-insts -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init < correct.ls.bc > correct.lamp.bc
+	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-insts -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init -profile-loader -profile-info-file=llvmprof.out < correct.ls.bc > correct.lamp.bc
 	 llc correct.lamp.bc -o correct.lamp.s
 	 g++ -o correct.lamp correct.lamp.s ${LLVMDIR}/Release/lib/profile_rt.so ${PROJDIR}/tools/lamp-profiler/lamp_hooks.o ${PROJDIR}/tools/lamp-profiler/loadstride.cxx
 	 -./correct.lamp > output
@@ -47,7 +46,13 @@ clean:
 	rm -f llvmprof.out
 	rm -f correct_correct output_correct
 	rm -f result.lamp*
-	rm -f *.bc correct.opt*
+	rm -f correct.bc correct.opt*
 	rm -f output output_prefetch correct.lamp* correct.ls* correct.profile* output_*
 	rm -f correct.prefetch*
 	rm -f cfg.*
+
+#	 opt -loop-simplify < simple.bc > simple.ls.bc
+#	 opt -load /y/students/mviscomi/hw1/Debug+Asserts/lib/sample.so -lamp-insts -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init < simple.ls.bc > simple.lamp.bc
+#	 llc < simple.lamp.bc > simple.lamp.s
+#	 g++ -o simple.lamp.exe simple.lamp.s /y/students/mviscomi/hw1/tools/lamp-profiler/lamp_hooks.o
+#	 -./simple.lamp.exe > output.lamp
