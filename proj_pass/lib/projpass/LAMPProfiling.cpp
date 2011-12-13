@@ -191,6 +191,7 @@ bool LAMPProfiler::runOnFunction(Function &F) {
           "addr_var",
           I
         );
+        errs() << "Exec count is " << PI->getExecutionCount(I->getParent()) << "line 194\n";
         StrideArgs[2] = ConstantInt::get(
           llvm::Type::getInt32Ty(F.getContext()),
           PI->getExecutionCount(I->getParent())
