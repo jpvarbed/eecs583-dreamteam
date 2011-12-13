@@ -46,6 +46,10 @@ class LoadStride {
       return strideValues.size();
     }
 
+    void clearAddresses() {
+      addresses.clear();
+    }
+
   private:
     static unsigned int TOPCOUNT;
 
