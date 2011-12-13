@@ -315,15 +315,13 @@ static void memory_profile(const uint32_t destId, const uint64_t addr) {
     //debug()<<endl;
 }
 
-int totalStrides = 0; // used for chunk sampling
-
-void LAMP_StrideProfile(const uint32_t load_id, const uint64_t addr) {
+void LAMP_StrideProfile(const uint32_t load_id, const uint64_t addr, const int32_t exec_count) {
   if (!LAMP_initialized) {
     return;
   }
 
   if (StrideProfiles.count(load_id) == 0) {
-    StrideProfiles[load_id] = new LoadStride(load_id);
+    StrideProfiles[load_id] = new LoadStride(load_id, exec_count);
   }
 
   LoadStride *profiler = StrideProfiles[load_id];

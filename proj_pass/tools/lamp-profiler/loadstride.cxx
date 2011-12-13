@@ -7,16 +7,25 @@
 #include <vector>
 #include <utility>
 #include <map>
+#include <algorithm>
+
 #include "loadstride.hxx"
+
 using namespace std;
 
 unsigned int LoadStride::TOPCOUNT = 4; // number of top stride values to return (not including zero)
 
-LoadStride::LoadStride(uint32_t load_id) {
+LoadStride::LoadStride(uint32_t load_id, int32_t exec_count) {
   loadID = load_id;
+  executionCount = exec_count;
   strideZeroCount = 0;
   strideZeroDifferenceCount = 0;
   topStrideHolder = make_pair(-1, -1);
+
+  number_skipped = 0;
+  number_profiled = 0;
+  profileN = min(1/5 * exec_count, 1000);
+  skipN = (exec_count - profileN) < 0 ? 0 : (exec_count - profileN);
 }
 
 LoadStride::~LoadStride() {
@@ -82,7 +91,19 @@ void LoadStride::updateTopStrideDifferenceValues(long value) {
 }
 
 void LoadStride::addAddress(uint64_t addr) {
-  if (addresses.size() == 0) {
+  if (number_skipped < skipN) {
+    number_skipped++;
+    return;
+  } else if (number_profiled == profileN) {
+    number_profiled = 0;
+    number_skipped = 0;
+    clearAddresses();
+    return;
+  }
+
+  number_profiled++;
+
+  if (number_profiled == 1) {
     addresses.push_back(addr);
     return;
   }
@@ -95,7 +116,7 @@ void LoadStride::addAddress(uint64_t addr) {
     strideZeroCount++;
   }
 
-  if (strideValues.size() == 0) {
+  if (number_profiled == 2) {
     strideValues.push_back(stride);
     if (strideValuesToCount.count(stride)) {
       strideValuesToCount[stride]++;

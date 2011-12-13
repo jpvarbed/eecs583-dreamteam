@@ -9,7 +9,7 @@ using namespace std;
 class LoadStride {
 
   public:
-    LoadStride(uint32_t);
+    LoadStride(uint32_t, int32_t);
     ~LoadStride();
 
     void addAddress(uint64_t);
@@ -53,7 +53,12 @@ class LoadStride {
   private:
     static unsigned int TOPCOUNT;
 
-    uint32_t loadID; 
+    uint32_t loadID;
+    uint32_t executionCount;
+    unsigned int number_skipped,
+                 number_profiled,
+                 skipN,
+                 profileN;
 
     vector<unsigned long> addresses;
     vector<long> strideValues;

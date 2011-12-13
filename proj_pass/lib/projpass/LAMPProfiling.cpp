@@ -101,6 +101,7 @@ namespace {
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.addRequired<TargetData>();
       AU.addRequired<LoopInfo>();
+      AU.addRequired<ProfileInfo>();
     }
 
     bool doInitialization(Module &M) { return false; }
@@ -115,6 +116,7 @@ namespace {
       ranOnce = false;
       TD = NULL;
       LI = NULL;
+      PI = NULL;
     } 
   };
 }
@@ -138,6 +140,7 @@ void LAMPProfiler::createLampDeclarations(Module* M)
     llvm::Type::getVoidTy(M->getContext()),
     llvm::Type::getInt32Ty(M->getContext()),
     llvm::Type::getInt64Ty(M->getContext()),
+    llvm::Type::getInt32Ty(M->getContext()),
     (Type *) 0
   );
 }
@@ -152,11 +155,15 @@ bool LAMPProfiler::runOnFunction(Function &F) {
 
   //DOUT << "Instrumenting Function " << F.getName() << " beginning ID: " << instruction_id << std::endl;
 
-  if (TD == NULL)
+  if (TD == NULL) {
     TD = &getAnalysis<TargetData>();
-  if (LI == NULL)
+  }
+  if (LI == NULL) {
     LI = &getAnalysis<LoopInfo>();
-
+  }
+  if (PI == NULL) {
+    PI = &getAnalysis<ProfileInfo>();
+  }
 
   for (Function::iterator IF = F.begin(), IE = F.end(); IF != IE; ++IF)
   {
@@ -176,13 +183,17 @@ bool LAMPProfiler::runOnFunction(Function &F) {
         
         // TODO only call this function if this load has some freq count above some threshold (use edge profiling to figure this out)
         
-        std::vector<Value*> StrideArgs(2);
+        std::vector<Value*> StrideArgs(3);
         StrideArgs[0] = ConstantInt::get(llvm::Type::getInt32Ty(F.getContext()), ++load_id);
         StrideArgs[1] = new PtrToIntInst(
           (dyn_cast<LoadInst>(I))->getPointerOperand(),
           llvm::Type::getInt64Ty(F.getContext()),
           "addr_var",
           I
+        );
+        StrideArgs[2] = ConstantInt::get(
+          llvm::Type::getInt32Ty(F.getContext()),
+          PI->getExecutionCount(I->getParent())
         );
         CallInst::Create(StrideProfileFn, StrideArgs.begin(), StrideArgs.end(), "", I);
       }
