@@ -16,7 +16,7 @@ default:
 	 llc correct.profile.bc -o correct.profile.s
 	 g++ -o correct.profile correct.profile.s ${LLVMDIR}/Release/lib/profile_rt.so
 	 -./correct.profile > output_profile
-	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-insts -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init -profile-loader -profile-info-file=llvmprof.out < correct.ls.bc > correct.lamp.bc
+	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-insts -profile-loader -profile-info-file=llvmprof.out -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init < correct.ls.bc > correct.lamp.bc
 	 llc correct.lamp.bc -o correct.lamp.s
 	 g++ -o correct.lamp correct.lamp.s ${LLVMDIR}/Release/lib/profile_rt.so ${PROJDIR}/tools/lamp-profiler/lamp_hooks.o ${PROJDIR}/tools/lamp-profiler/loadstride.cxx
 	 -./correct.lamp > output

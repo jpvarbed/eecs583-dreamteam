@@ -7,7 +7,7 @@
 #include <sys/types.h>
 #include <sys/time.h>
 
-#define SIZE 500
+#define SIZE 300
 
 struct timeval t_start, t_end;
 double t_diff;
@@ -33,7 +33,10 @@ int main() {
   for (i = 0; i < SIZE; i++) {
     for (j = 0; j < SIZE; j++) {
       for (k = 0; k < SIZE; k++) {
-        sum += A[i][k] + B[k][j];
+        sum += A[k][0] * 53 * B[k][0];
+        int a = 53 * sum;
+        int b = a * a;
+        int c = b * c * b*c*32423*b*c*c*c;
       }
     }
   }

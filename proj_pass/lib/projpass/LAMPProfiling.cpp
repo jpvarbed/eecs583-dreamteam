@@ -99,9 +99,9 @@ namespace {
     bool ranOnce;
     public:
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
+      AU.addRequired<ProfileInfo>();
       AU.addRequired<TargetData>();
       AU.addRequired<LoopInfo>();
-      AU.addRequired<ProfileInfo>();
     }
 
     bool doInitialization(Module &M) { return false; }
@@ -170,6 +170,7 @@ bool LAMPProfiler::runOnFunction(Function &F) {
 
     BasicBlock& BB = *IF;
 
+    errs() << PI->getExecutionCount(&BB) << "\n";
     for (BasicBlock::iterator I = BB.begin(), E = BB.end(); I != E; ++I)
     {
 
