@@ -17,7 +17,8 @@ default:
 	 g++ -o correct.profile correct.profile.s ${LLVMDIR}/Release/lib/profile_rt.so
 	 -./correct.profile > output_profile
 	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-insts -profile-loader -profile-info-file=llvmprof.out -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init < correct.ls.bc > correct.lamp.bc
-	 llc correct.lamp.bc -o correct.lamp.s
+	 opt -mem2reg correct.lamp.bc -o correct.lamp.mem2reg.bc
+	 llc correct.lamp.mem2reg -o correct.lamp.s
 	 g++ -o correct.lamp correct.lamp.s ${LLVMDIR}/Release/lib/profile_rt.so ${PROJDIR}/tools/lamp-profiler/lamp_hooks.o ${PROJDIR}/tools/lamp-profiler/loadstride.cxx
 	 -./correct.lamp > output
 	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-inst-cnt -lamp-map-loop -lamp-load-profile -profile-loader -profile-info-file=llvmprof.out -projpass correct.ls.bc > correct.prefetch.bc

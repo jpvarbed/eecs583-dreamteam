@@ -155,6 +155,7 @@ vector<Instruction *> loadsToStride;
 void LAMPProfiler::doStrides() {
   Instruction *I;
   Value *compare;
+  BinaryOperator *newNum;
 
   for (int i = 0; i < loadsToStride.size(); i++) {
     I = loadsToStride[i];
@@ -235,6 +236,18 @@ void LAMPProfiler::doStrides() {
     oldBB->getTerminator()->eraseFromParent();
 
     // number_skipped++ in the skippingBB
+    newNum = BinaryOperator::Create(
+      Instruction::Add,
+      number_skipped_load,
+      ConstantInt::get(Type::getInt32Ty(I->getParent()->getContext()), 1),
+      "number_skip_inc",
+      skippingBB->getTerminator()
+    );
+    new StoreInst(
+      newNum,
+      number_skipped,
+      skippingBB->getTerminator()
+    );
     
     // set number_profiled and number_skipped to 0 in resetBB
     new StoreInst(
@@ -248,6 +261,19 @@ void LAMPProfiler::doStrides() {
       resetBB->getTerminator()
     );
 
+    newNum = BinaryOperator::Create(
+      Instruction::Add,
+      number_skipped_load,
+      ConstantInt::get(Type::getInt32Ty(I->getParent()->getContext()), 1),
+      "number_skip_inc",
+      strideBB->getTerminator()
+    );
+    new StoreInst(
+      newNum,
+      number_skipped,
+      strideBB->getTerminator()
+    );
+
     std::vector<Value*> StrideArgs(3);
     StrideArgs[0] = ConstantInt::get(
       llvm::Type::getInt32Ty(I->getParent()->getParent()->getContext()),
@@ -259,18 +285,19 @@ void LAMPProfiler::doStrides() {
       "addr_var",
       strideBB->getTerminator()
     );
+    errs() << "EX: "<<PI->getExecutionCount(I->getParent()) <<"\n";
     StrideArgs[2] = ConstantInt::get(
       llvm::Type::getInt32Ty(I->getParent()->getParent()->getContext()),
       PI->getExecutionCount(I->getParent())
     );
 
-    /*CallInst::Create(
+    CallInst::Create(
       StrideProfileFn,
       StrideArgs.begin(),
       StrideArgs.end(),
       "",
       strideBB->getTerminator()
-    );*/
+    );
   }
 }
 
