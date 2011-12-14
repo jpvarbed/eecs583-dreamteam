@@ -180,6 +180,7 @@ void LAMPProfiler::doStrides() {
     int tmpN1 = (exec_count - tmpN2) < 0 ? 0 : (exec_count - tmpN2);
 
     Value *number_skipped = new GlobalVariable(
+      *(I->getParent()->getParent()->getParent()),
       Type::getInt32Ty(I->getParent()->getContext()),
       false,
       llvm::GlobalValue::LinkerPrivateLinkage,
@@ -188,6 +189,7 @@ void LAMPProfiler::doStrides() {
     );
     
     Value *number_profiled = new GlobalVariable(
+      *(I->getParent()->getParent()->getParent()),
       Type::getInt32Ty(I->getParent()->getContext()),
       false,
       llvm::GlobalValue::LinkerPrivateLinkage,
@@ -201,34 +203,50 @@ void LAMPProfiler::doStrides() {
     loadBB = SplitBlock(oldBB, I, this);
     skippingBB = SplitBlock(oldBB, oldBB->getTerminator(), this);
 
-    profCheck = BasicBlock::Create(I->getParent()->getParent()->getContext(), "profCheck");
-    BranchInst::Create(loadBB, profCheck);
-    resetBB = SplitBlock(profCheck, profCheck->getTerminator(), this);
-
-    strideBB = BasicBlock::Create(I->getParent()->getParent()->getContext(), "strideBB");
+    profCheck = BasicBlock::Create(I->getParent()->getParent()->getContext(), "profCheck", I->getParent()->getParent(), oldBB);
+    resetBB = BasicBlock::Create(I->getParent()->getParent()->getContext(), "resetBB", I->getParent()->getParent(), oldBB); 
+    strideBB = BasicBlock::Create(I->getParent()->getParent()->getContext(), "strideBB", I->getParent()->getParent(), oldBB);
+    BranchInst::Create(resetBB, profCheck); 
+    BranchInst::Create(loadBB, resetBB);
     BranchInst::Create(loadBB, strideBB);
+    
+    // insert conditional from profCheck to resetBB (true) or strideBB (false)
+    LoadInst *number_profiled_load = new LoadInst(number_profiled, "numload", profCheck->getTerminator());
+    compare = new ICmpInst(
+      profCheck->getTerminator(),
+      ICmpInst::ICMP_EQ,
+      number_profiled_load,
+      ConstantInt::get(Type::getInt32Ty(I->getParent()->getContext()), tmpN2),
+      "profcheckCompare"
+    );
+    BranchInst::Create(resetBB, strideBB, compare, profCheck->getTerminator());
+    profCheck->getTerminator()->eraseFromParent();
 
     // insert conditional from oldBB to skippingBB (true) or profCheck (false)
+    LoadInst *number_skipped_load = new LoadInst(number_skipped, "skipload", oldBB->getTerminator());
     compare = new ICmpInst(
       oldBB->getTerminator(),
       ICmpInst::ICMP_ULT, //ult = unsigned less than
-      number_skipped,
+      number_skipped_load,
       ConstantInt::get(Type::getInt32Ty(I->getParent()->getContext()), tmpN1),
       "oldbbCompare"
     );
     BranchInst::Create(skippingBB, profCheck, compare, oldBB->getTerminator());
     oldBB->getTerminator()->eraseFromParent();
 
-    // insert conditional from profCheck to resetBB (true) or strideBB (false)
-    compare = new ICmpInst(
-      profCheck->getTerminator(),
-      ICmpInst::ICMP_EQ,
+    // number_skipped++ in the skippingBB
+    
+    // set number_profiled and number_skipped to 0 in resetBB
+    new StoreInst(
+      ConstantInt::get(Type::getInt32Ty(resetBB->getContext()), 0),
       number_profiled,
-      ConstantInt::get(Type::getInt32Ty(I->getParent()->getContext()), tmpN2),
-      "profcheckCompare"
+      resetBB->getTerminator()
     );
-    BranchInst::Create(resetBB, strideBB, compare, profCheck->getTerminator());
-    profCheck->getTerminator()->eraseFromParent();
+    new StoreInst(
+      ConstantInt::get(Type::getInt32Ty(resetBB->getContext()), 0),
+      number_skipped,
+      resetBB->getTerminator()
+    );
 
     std::vector<Value*> StrideArgs(3);
     StrideArgs[0] = ConstantInt::get(
@@ -239,20 +257,20 @@ void LAMPProfiler::doStrides() {
       (dyn_cast<LoadInst>(I))->getPointerOperand(),
       llvm::Type::getInt64Ty(I->getParent()->getParent()->getContext()),
       "addr_var",
-      I
+      strideBB->getTerminator()
     );
     StrideArgs[2] = ConstantInt::get(
       llvm::Type::getInt32Ty(I->getParent()->getParent()->getContext()),
       PI->getExecutionCount(I->getParent())
     );
 
-    CallInst::Create(
+    /*CallInst::Create(
       StrideProfileFn,
       StrideArgs.begin(),
       StrideArgs.end(),
       "",
       strideBB->getTerminator()
-    );
+    );*/
   }
 }
 

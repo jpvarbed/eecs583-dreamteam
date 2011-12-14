@@ -28,6 +28,8 @@ default:
 	mv cfg.main.dot cfg.prefetch.dot
 	opt -dot-cfg correct.bc >& /dev/null
 	mv cfg.main.dot cfg.correct.dot
+	opt -dot-cfg correct.lamp.bc >& /dev/null
+	mv cfg.main.dot cfg.lamp.dot
 	rm -f cfg.main.dot
 	opt -mem2reg correct.prefetch.bc -o correct.prefetch.mem2reg.bc
 	llc correct.prefetch.mem2reg.bc -o correct.prefetch.mem2reg.s
