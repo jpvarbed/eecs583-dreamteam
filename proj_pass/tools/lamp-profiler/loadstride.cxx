@@ -22,10 +22,7 @@ LoadStride::LoadStride(uint32_t load_id, int32_t exec_count) {
   strideZeroDifferenceCount = 0;
   topStrideHolder = make_pair(-1, -1);
 
-  //number_skipped = 0;
-  //number_profiled = 0;
-  //profileN = 5;//max(1.0/5.0 * (double)exec_count, 1000.0);
-  //skipN = (exec_count - profileN) < 0 ? 0 : (exec_count - profileN);
+  cout << "looking at load_id: "<<load_id<<"\n";
   //cout << "exec_count <" << exec_count << "> " << "profile <" << profileN << "> skip<" << skipN << ">\n";
 }
 
@@ -92,19 +89,7 @@ void LoadStride::updateTopStrideDifferenceValues(long value) {
 }
 
 void LoadStride::addAddress(uint64_t addr) {
-  if (number_skipped < skipN) {
-    number_skipped++;
-    return;
-  } else if (number_profiled == profileN) {
-    number_profiled = 0;
-    number_skipped = 0;
-    clearAddresses();
-    return;
-  }
-
-  number_profiled++;
-
-  if (number_profiled == 1) {
+  if (addresses.size() == 0) {
     addresses.push_back(addr);
     return;
   }
@@ -113,11 +98,12 @@ void LoadStride::addAddress(uint64_t addr) {
   addresses.push_back(addr);
   
   long stride = addr - last_address;
-  if (stride == 0) {
+  if (stride == 0 || isSameValue(addr, last_address)) {
     strideZeroCount++;
+    return;
   }
 
-  if (number_profiled == 2) {
+  if (strideValues.size() == 0) {
     strideValues.push_back(stride);
     if (strideValuesToCount.count(stride)) {
       strideValuesToCount[stride]++;

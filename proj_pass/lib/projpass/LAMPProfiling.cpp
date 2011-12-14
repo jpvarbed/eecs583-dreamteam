@@ -166,28 +166,21 @@ void LAMPProfiler::doStrides() {
 
   for (int i = 0; i < loadsToStride.size(); i++) {
     I = loadsToStride[i];
-   
+
     load_id++;
-
-    /*
-      static int number_skipped = 0;
-      static int number_profiled = 0;
-      if (number_skipped < N1) {
-        number_skipped++;
-        return;
-      }
-      if (number_profiled == N2) {
-        number_profiled = 0;
-        number_skipped = 0;
-        return;
-      }
-
-      numer_profiled++;
-    */
-
+    
+    int chunkSize = 30;
     int exec_count = loadToExecCount[I];
-    int tmpN2 = 5; //max(1.0/5.0 * (double)exec_count, 1000.0);
-    int tmpN1 = (exec_count - tmpN2) < 0 ? 0 : (exec_count - tmpN2);
+    // N2 = number to profile ; N1 = number to skip
+    int tmpN2 = 1.0/20.0 * (double)exec_count;
+    tmpN2 = tmpN2 < 1 ? exec_count : tmpN2;
+    tmpN2 = min(tmpN2, chunkSize);
+    int tmpN1 = 3.0 / 20.0 * (double)exec_count;
+    tmpN1 = tmpN2 == exec_count ? 0 : tmpN1;
+    tmpN1 = tmpN2 == chunkSize ? tmpN1 + 1.0/20.0 * exec_count - chunkSize : tmpN1;
+
+    errs() << "Profile Num: " << tmpN2 << "\n";
+    errs() << "Skip Num: " << tmpN1 << "\n";
 
     Value *number_skipped = new GlobalVariable(
       *(I->getParent()->getParent()->getParent()),
@@ -318,7 +311,7 @@ void LAMPProfiler::doStrides() {
       StrideArgs.end(),
       "",
       strideBB->getTerminator()
-    );
+    ); 
   }
 }
 
