@@ -1,8 +1,10 @@
 -include ../Makefile.defaults
 
+DEBUG_FLAG = 
+
 default:
 	 make clean
-	 g++ correct.c -o correct_correct
+	 g++ ${DEBUG_FLAG} correct.c -o  correct_correct
 	 ./correct_correct > output_correct
 	 llvm-gcc -emit-llvm correct.c -c -o correct.bc
 	 opt -loop-simplify correct.bc -o correct.ls.bc

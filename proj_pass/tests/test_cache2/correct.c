@@ -1,16 +1,24 @@
 /*
    This test case does a matrix multiplication in attempt to just get straight up cache misses
    */
-
 #include "stdio.h"
 #include <sys/types.h>
 #include <sys/time.h>
-#include <iostream>
+#include <stdio.h>
+#include <assert.h>
 
-using std::cerr; using std::cout;
+//#define PRINT_DEBUG
+#ifdef PRINT_DEBUG
+#  define DEBUG(x) x
+#else
+#  define DEBUG(x)
+#endif
+
+
+DEBUG(using std::cout;)
 
 // 1 << 13 is 8192
-#define SIZE 1 << 13 
+#define SIZE 1 << 8
 #define SKIP 10000
 
 /*
@@ -40,7 +48,7 @@ unsigned int R[SIZE][SIZE];
 
 int main() {
   unsigned int i, j, k;
-  unsigned int bit_shift = 13;
+  unsigned int bit_shift = 8;
   unsigned int matrix_size = SIZE << bit_shift;
   // fill in the matrices
   for (i = 0; i < SIZE; ++i) {
@@ -68,11 +76,11 @@ int main() {
   unsigned int i_outer = 0;
   unsigned int j_outer = 0;
   unsigned int shift_outer = 0; // this moves the index along
-  cout << "Entering loops\n";
+  DEBUG(cout << "Entering loops\n";)
   do {
-    unsigned int cur_skip_outer = 1;
-    unsigned int offset_outer = shift_outer + cur_skip_outer * SIZE;
-    i_outer = offset_outer / SIZE;
+    unsigned int cur_skip_outer = 0;
+    unsigned int offset_outer = shift_outer + cur_skip_outer * SKIP;
+    i_outer = (offset_outer / SIZE) % SIZE;
     j_outer = offset_outer % SIZE;
     unsigned int cur_skip_inner = 1;
     while (offset_outer < matrix_size) {
@@ -80,24 +88,27 @@ int main() {
       unsigned int i_inner = 0;
       unsigned int j_inner = 0;
       do {
-        unsigned int cur_skip_inner = 1;
-        unsigned int offset_inner = shift_inner + cur_skip_inner * SIZE;
+        unsigned int cur_skip_inner = 0;
+        unsigned int offset_inner = shift_inner + cur_skip_inner * SKIP;
         while (offset_inner < matrix_size) {
-          i_inner = offset_inner / SIZE;
+          i_inner = (offset_inner / SIZE) % SIZE;
           j_inner = offset_inner % SIZE;
           
           for (k = 0; k < SIZE; ++k) {
             R[i_outer][j_inner] += A[i_outer][k] * B[k][j_inner]; 
           }
 
-          cout << "\rOffset_inner is " << offset_inner;
-          ++offset_inner;
+          offset_inner = shift_inner + (++cur_skip_inner) * SKIP;
+          DEBUG(cout << "\rInner loop progress is " << (double)offset_inner / matrix_size;)
         } 
-      } while ((++shift_inner) % SIZE);
-      ++offset_outer;
+        DEBUG(cout << '\n';)
+        DEBUG(cout << "\rShift inner progress is " << (double)shift_inner/SIZE;)
+      } while (++shift_inner < SIZE);
+      offset_outer = shift_outer + (++cur_skip_outer) * SKIP;
+      DEBUG(cout << "\rOuter loop progress is " << (double)offset_outer / matrix_size;)
     }
-    cerr << "\rProgress: " << shift_outer % SIZE;     
-  } while ((++shift_outer) % SIZE);
+    DEBUG(cout << "\rShift outer progress is " << (double)shift_outer/SIZE;)
+  } while (++shift_outer < SIZE);
   
   // multiply the matrices
   /*for (i = 0; i < SIZE; ++i) {
