@@ -22,11 +22,11 @@ LoadStride::LoadStride(uint32_t load_id, int32_t exec_count) {
   strideZeroDifferenceCount = 0;
   topStrideHolder = make_pair(-1, -1);
 
-  number_skipped = 0;
-  number_profiled = 0;
-  profileN = 5;//max(1.0/5.0 * (double)exec_count, 1000.0);
-  skipN = (exec_count - profileN) < 0 ? 0 : (exec_count - profileN);
-  cout << "exec_count <" << exec_count << "> " << "profile <" << profileN << "> skip<" << skipN << ">\n";
+  //number_skipped = 0;
+  //number_profiled = 0;
+  //profileN = 5;//max(1.0/5.0 * (double)exec_count, 1000.0);
+  //skipN = (exec_count - profileN) < 0 ? 0 : (exec_count - profileN);
+  //cout << "exec_count <" << exec_count << "> " << "profile <" << profileN << "> skip<" << skipN << ">\n";
 }
 
 LoadStride::~LoadStride() {

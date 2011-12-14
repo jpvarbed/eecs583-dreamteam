@@ -61,10 +61,10 @@ class LoadStride {
 
     uint32_t loadID;
     uint32_t executionCount;
-    unsigned int number_skipped,
-                 number_profiled,
-                 skipN,
-                 profileN;
+    //unsigned int number_skipped,
+    //             number_profiled,
+    //             skipN,
+    //             profileN;
 
     vector<unsigned long> addresses;
     vector<long> strideValues;

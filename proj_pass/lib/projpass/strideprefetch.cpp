@@ -166,8 +166,9 @@ void StridePrefetch::loopOver(DomTreeNode *N) {
             Instruction *I = II;
             if (dyn_cast<LoadInst>(I) && getInfo(I) != NULL) {
                 // TODO - decide if this is an instruction to actually profile?
-                if(PI->getExecutionCount(I->getParent()) > 0)
-                    profile(I);
+                if(PI->getExecutionCount(I->getParent()) > 0) {
+                  profile(I);
+                }
             }
         }
 
@@ -237,6 +238,8 @@ void StridePrefetch::profile(Instruction *inst) {
     freq1 = profData->top_freqs[0];
     exec_count = profData->exec_count;
 
+    assert(exec_count && "exec_count in profile is 0");
+
     for (unsigned int i = 0; i < profData->top_freqs.size(); i++) {
         top_4_freq += profData->top_freqs[i];
     }
@@ -272,21 +275,21 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
     // make alloca for scratch reg
     Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
     AllocaInst *scratchPtr = new AllocaInst(
-            loadAddr->getType(),
-            "scratch" + inst->getName(),
-            entryBlock
-            ); 
+      loadAddr->getType(),
+      "scratch" + inst->getName(),
+      entryBlock
+    ); 
 
     StoreInst *storePtr = new StoreInst(scratchPtr, loadAddr, inst);
 
     // stride = addr(load) - scratch
     BinaryOperator *subPtr = BinaryOperator::Create(
-            Instruction::Sub,
-            loadAddr,
-            scratchPtr,
-            "stride",
-            storePtr
-            );
+      Instruction::Sub,
+      loadAddr,
+      scratchPtr,
+      "stride",
+      storePtr
+    );
     return subPtr;
 }
 

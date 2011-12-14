@@ -99,6 +99,7 @@ namespace {
     ProfileInfo *PI;
     LoopInfo *LI;
     Constant* StrideProfileFn;
+    Constant* StrideProfileClearAddresses;
     void createLampDeclarations(Module* M);
     TargetData* TD;
     bool ranOnce;
@@ -138,19 +139,25 @@ FunctionPass *llvm::createLAMPProfilerPass() { return new LAMPProfiler(); }
 
 void LAMPProfiler::createLampDeclarations(Module* M)
 {
-  std::string StrideProfileName = "LAMP_StrideProfile";
-
   StrideProfileFn = M->getOrInsertFunction(
-    StrideProfileName,
+    "LAMP_StrideProfile",
     llvm::Type::getVoidTy(M->getContext()),
     llvm::Type::getInt32Ty(M->getContext()),
     llvm::Type::getInt64Ty(M->getContext()),
     llvm::Type::getInt32Ty(M->getContext()),
     (Type *) 0
   );
+
+  StrideProfileClearAddresses = M->getOrInsertFunction(
+    "LAMP_StrideProfile_ClearAddresses",
+    llvm::Type::getVoidTy(M->getContext()),
+    llvm::Type::getInt32Ty(M->getContext()),
+    (Type *) 0
+  );
 }
 
 vector<Instruction *> loadsToStride;
+map<Instruction *, unsigned int> loadToExecCount;
 
 void LAMPProfiler::doStrides() {
   Instruction *I;
@@ -159,6 +166,8 @@ void LAMPProfiler::doStrides() {
 
   for (int i = 0; i < loadsToStride.size(); i++) {
     I = loadsToStride[i];
+   
+    load_id++;
 
     /*
       static int number_skipped = 0;
@@ -176,7 +185,7 @@ void LAMPProfiler::doStrides() {
       numer_profiled++;
     */
 
-    int exec_count = PI->getExecutionCount(I->getParent()); 
+    int exec_count = loadToExecCount[I];
     int tmpN2 = 5; //max(1.0/5.0 * (double)exec_count, 1000.0);
     int tmpN1 = (exec_count - tmpN2) < 0 ? 0 : (exec_count - tmpN2);
 
@@ -250,6 +259,7 @@ void LAMPProfiler::doStrides() {
     );
     
     // set number_profiled and number_skipped to 0 in resetBB
+    // also clear addresses in class
     new StoreInst(
       ConstantInt::get(Type::getInt32Ty(resetBB->getContext()), 0),
       number_profiled,
@@ -258,6 +268,18 @@ void LAMPProfiler::doStrides() {
     new StoreInst(
       ConstantInt::get(Type::getInt32Ty(resetBB->getContext()), 0),
       number_skipped,
+      resetBB->getTerminator()
+    );
+    std::vector<Value*> StrideClearArgs(1);
+    StrideClearArgs[0] = ConstantInt::get(
+      llvm::Type::getInt32Ty(I->getParent()->getParent()->getContext()),
+      load_id
+    );
+    CallInst::Create(
+      StrideProfileClearAddresses,
+      StrideClearArgs.begin(),
+      StrideClearArgs.end(),
+      "",
       resetBB->getTerminator()
     );
 
@@ -277,7 +299,7 @@ void LAMPProfiler::doStrides() {
     std::vector<Value*> StrideArgs(3);
     StrideArgs[0] = ConstantInt::get(
       llvm::Type::getInt32Ty(I->getParent()->getParent()->getContext()),
-      ++load_id
+      load_id
     );
     StrideArgs[1] = new PtrToIntInst(
       (dyn_cast<LoadInst>(I))->getPointerOperand(),
@@ -285,10 +307,9 @@ void LAMPProfiler::doStrides() {
       "addr_var",
       strideBB->getTerminator()
     );
-    errs() << "EX: "<<PI->getExecutionCount(I->getParent()) <<"\n";
     StrideArgs[2] = ConstantInt::get(
       llvm::Type::getInt32Ty(I->getParent()->getParent()->getContext()),
-      PI->getExecutionCount(I->getParent())
+      exec_count
     );
 
     CallInst::Create(
@@ -329,7 +350,7 @@ bool LAMPProfiler::runOnFunction(Function &F) {
         errs() << instruction_id <<" is: "<< *I << "\n";
         
         // TODO only call this function if this load has some freq count above some threshold (use edge profiling to figure this out)
-
+        loadToExecCount[I] = PI->getExecutionCount(I->getParent());
         loadsToStride.push_back(I);
       }
     }

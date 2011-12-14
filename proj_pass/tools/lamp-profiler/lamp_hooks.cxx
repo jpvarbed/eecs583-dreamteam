@@ -328,6 +328,16 @@ void LAMP_StrideProfile(const uint32_t load_id, const uint64_t addr, const int32
   profiler->addAddress(addr);
 }
 
+void LAMP_StrideProfile_ClearAddresses(const uint32_t load_id) {
+  if (!LAMP_initialized) {
+    return;
+  }
+
+  assert(StrideProfiles.count(load_id) && "StrideProfile for the load not found (ClearAddr)");
+
+  StrideProfiles[load_id]->clearAddresses();
+}
+
 template <class T>
 static void LAMP_aligned_load(const uint32_t instr, const uint64_t addr) {
     if (!LAMP_initialized) return;
