@@ -1,8 +1,10 @@
 #include "llvm/Analysis/ProfileInfo.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Constants.h"
 #include "llvm/DerivedTypes.h"
 #include "llvm/Module.h"
 #include "llvm/Pass.h"
+#include "llvm/Instructions.h"
 #include "llvm/IntrinsicInst.h"
 #include "llvm/Target/TargetInstrInfo.h"
 #include "llvm/Target/TargetData.h"
@@ -17,6 +19,8 @@
 #include "llvm/Support/Debug.h"
 #include <iostream>
 #include <set>
+#include <map>
+#include <algorithm>
 #include "loadstride.h"
 
 using namespace llvm;
@@ -90,6 +94,7 @@ ModulePass *llvm::createLdStCallCounter() {
 namespace {
   class LAMPProfiler : public FunctionPass {
     bool runOnFunction(Function& F);
+    void doStrides();
 
     ProfileInfo *PI;
     LoopInfo *LI;
@@ -145,15 +150,118 @@ void LAMPProfiler::createLampDeclarations(Module* M)
   );
 }
 
-bool LAMPProfiler::runOnFunction(Function &F) {
+vector<Instruction *> loadsToStride;
 
+void LAMPProfiler::doStrides() {
+  Instruction *I;
+  Value *compare;
+
+  for (int i = 0; i < loadsToStride.size(); i++) {
+    I = loadsToStride[i];
+
+    /*
+      static int number_skipped = 0;
+      static int number_profiled = 0;
+      if (number_skipped < N1) {
+        number_skipped++;
+        return;
+      }
+      if (number_profiled == N2) {
+        number_profiled = 0;
+        number_skipped = 0;
+        return;
+      }
+
+      numer_profiled++;
+    */
+
+    int exec_count = PI->getExecutionCount(I->getParent()); 
+    int tmpN2 = 5; //max(1.0/5.0 * (double)exec_count, 1000.0);
+    int tmpN1 = (exec_count - tmpN2) < 0 ? 0 : (exec_count - tmpN2);
+
+    Value *number_skipped = new GlobalVariable(
+      Type::getInt32Ty(I->getParent()->getContext()),
+      false,
+      llvm::GlobalValue::LinkerPrivateLinkage,
+      ConstantInt::get(Type::getInt32Ty(I->getParent()->getContext()), 0),
+      "number_skipped"
+    );
+    
+    Value *number_profiled = new GlobalVariable(
+      Type::getInt32Ty(I->getParent()->getContext()),
+      false,
+      llvm::GlobalValue::LinkerPrivateLinkage,
+      ConstantInt::get(Type::getInt32Ty(I->getParent()->getContext()), 0),
+      "number_profiled"
+    );
+
+    BasicBlock *oldBB, *loadBB, *skippingBB,
+               *profCheck, *resetBB, *strideBB;
+    oldBB = I->getParent();
+    loadBB = SplitBlock(oldBB, I, this);
+    skippingBB = SplitBlock(oldBB, oldBB->getTerminator(), this);
+
+    profCheck = BasicBlock::Create(I->getParent()->getParent()->getContext(), "profCheck");
+    BranchInst::Create(loadBB, profCheck);
+    resetBB = SplitBlock(profCheck, profCheck->getTerminator(), this);
+
+    strideBB = BasicBlock::Create(I->getParent()->getParent()->getContext(), "strideBB");
+    BranchInst::Create(loadBB, strideBB);
+
+    // insert conditional from oldBB to skippingBB (true) or profCheck (false)
+    compare = new ICmpInst(
+      oldBB->getTerminator(),
+      ICmpInst::ICMP_ULT, //ult = unsigned less than
+      number_skipped,
+      ConstantInt::get(Type::getInt32Ty(I->getParent()->getContext()), tmpN1),
+      "oldbbCompare"
+    );
+    BranchInst::Create(skippingBB, profCheck, compare, oldBB->getTerminator());
+    oldBB->getTerminator()->eraseFromParent();
+
+    // insert conditional from profCheck to resetBB (true) or strideBB (false)
+    compare = new ICmpInst(
+      profCheck->getTerminator(),
+      ICmpInst::ICMP_EQ,
+      number_profiled,
+      ConstantInt::get(Type::getInt32Ty(I->getParent()->getContext()), tmpN2),
+      "profcheckCompare"
+    );
+    BranchInst::Create(resetBB, strideBB, compare, profCheck->getTerminator());
+    profCheck->getTerminator()->eraseFromParent();
+
+    std::vector<Value*> StrideArgs(3);
+    StrideArgs[0] = ConstantInt::get(
+      llvm::Type::getInt32Ty(I->getParent()->getParent()->getContext()),
+      ++load_id
+    );
+    StrideArgs[1] = new PtrToIntInst(
+      (dyn_cast<LoadInst>(I))->getPointerOperand(),
+      llvm::Type::getInt64Ty(I->getParent()->getParent()->getContext()),
+      "addr_var",
+      I
+    );
+    StrideArgs[2] = ConstantInt::get(
+      llvm::Type::getInt32Ty(I->getParent()->getParent()->getContext()),
+      PI->getExecutionCount(I->getParent())
+    );
+
+    CallInst::Create(
+      StrideProfileFn,
+      StrideArgs.begin(),
+      StrideArgs.end(),
+      "",
+      strideBB->getTerminator()
+    );
+  }
+}
+
+bool LAMPProfiler::runOnFunction(Function &F) {
   if (ranOnce == false) {
     Module* M = F.getParent();
     createLampDeclarations(M);
     ranOnce = true;
   }
-
-  //DOUT << "Instrumenting Function " << F.getName() << " beginning ID: " << instruction_id << std::endl;
 
   if (TD == NULL) {
     TD = &getAnalysis<TargetData>();
@@ -164,48 +272,29 @@ bool LAMPProfiler::runOnFunction(Function &F) {
   if (PI == NULL) {
     PI = &getAnalysis<ProfileInfo>();
   }
+  
+  //DOUT << "Instrumenting Function " << F.getName() << " beginning ID: " << instruction_id << std::endl;
 
-  for (Function::iterator IF = F.begin(), IE = F.end(); IF != IE; ++IF)
-  {
-
+  for (Function::iterator IF = F.begin(), IE = F.end(); IF != IE; ++IF) {
     BasicBlock& BB = *IF;
-
-    errs() << PI->getExecutionCount(&BB) << "\n";
-    for (BasicBlock::iterator I = BB.begin(), E = BB.end(); I != E; ++I)
-    {
-
-      // Instrument Loads
-      if (isa<LoadInst>(I))
-      {
-        std::vector<Value*> Args(2);
-
-        Args[0] = ConstantInt::get(llvm::Type::getInt32Ty(F.getContext()), ++instruction_id);
-        errs() << Args[0] <<" ("<< instruction_id <<") is: "<<*I<<"\n";
+    
+    for (BasicBlock::iterator I = BB.begin(), E = BB.end(); I != E; ++I) {
+      if (isa<LoadInst>(I)) {
+        instruction_id++;
+        errs() << instruction_id <<" is: "<< *I << "\n";
         
         // TODO only call this function if this load has some freq count above some threshold (use edge profiling to figure this out)
-        
-        std::vector<Value*> StrideArgs(3);
-        StrideArgs[0] = ConstantInt::get(llvm::Type::getInt32Ty(F.getContext()), ++load_id);
-        StrideArgs[1] = new PtrToIntInst(
-          (dyn_cast<LoadInst>(I))->getPointerOperand(),
-          llvm::Type::getInt64Ty(F.getContext()),
-          "addr_var",
-          I
-        );
-        errs() << "Exec count is " << PI->getExecutionCount(I->getParent()) << "line 194\n";
-        StrideArgs[2] = ConstantInt::get(
-          llvm::Type::getInt32Ty(F.getContext()),
-          PI->getExecutionCount(I->getParent())
-        );
-        CallInst::Create(StrideProfileFn, StrideArgs.begin(), StrideArgs.end(), "", I);
+
+        loadsToStride.push_back(I);
       }
- 
-      
-     }
+    }
   }
+
+  doStrides();
 
   return true;
 }
+
 
 
 

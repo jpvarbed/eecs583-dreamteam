@@ -50,6 +50,12 @@ class LoadStride {
       addresses.clear();
     }
 
+    bool isSameValue(long value1, long value2) {
+      // value1 and value2 are treated to be the same vlaue
+      // if they only are different in the last 4 bits
+      return (value1 >> 4 == value2 >> 4);
+    }
+
   private:
     static unsigned int TOPCOUNT;
 
