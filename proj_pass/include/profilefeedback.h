@@ -29,7 +29,7 @@
 #define PMSTD_T 0.40
 #define WSST_T  0.25
 #define WSSTD_T 0.10
-#define MAXPREFETCHDISTANCE 8
+#define MAXPREFETCHDISTANCE 4
 #define NUM_TOP_FREQ 4
 
 using namespace llvm;

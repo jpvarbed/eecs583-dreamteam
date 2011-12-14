@@ -151,7 +151,6 @@ void StridePrefetch::insertPrefetchInsts(const set<Instruction*> loads) {
     for (loadIter = loads.begin(); loadIter != loads.end(); ++loadIter) {
         insertLoad(*loadIter);
     }
-  }
 }
 
 void StridePrefetch::loopOver(DomTreeNode *N) {
@@ -335,7 +334,6 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
                 "shiftleft",
                 inst
                 );
-/*
         addition = BinaryOperator::Create(
                 Instruction::Add,
                 newLoadAddr,
