@@ -194,7 +194,7 @@ void LAMPProfiler::doStrides() {
     
     if(!isLoadDynamic(I))
         continue;
-    errs() << "Found dynamic load\n";
+    errs() << "Found dynamic load id<" << load_id << "> inst " << *I <<"\n";
     int chunkSize = 30;
     int exec_count = loadToExecCount[I];
     // N2 = number to profile ; N1 = number to skip

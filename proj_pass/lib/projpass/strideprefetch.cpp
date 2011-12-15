@@ -256,7 +256,7 @@ void StridePrefetch::profile(Instruction *inst) {
 
   errs() << freq1 << " / "<<exec_count<<" > "<<SSST_T<<"\n"; 
   // cache line stuff...not sure yet?
-  if (freq1 / exec_count > SSST_T) {
+  if ((double)freq1 / exec_count > SSST_T) {
     SSST_loads.insert(inst);
     errs() << "adding to SSST ("<<profData->dominant_stride<<")\n";
   }
