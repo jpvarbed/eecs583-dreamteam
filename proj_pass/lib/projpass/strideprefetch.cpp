@@ -17,6 +17,7 @@
 #include "llvm/Instruction.h"
 #include "llvm/Instructions.h"
 #include "llvm/LLVMContext.h"
+#include "llvm/BasicBlock.h"
 #include "llvm/Analysis/AliasAnalysis.h"
 #include "llvm/Analysis/AliasSetTracker.h"
 #include "llvm/Analysis/ConstantFolding.h"
@@ -82,8 +83,6 @@ namespace {
       ProfileInfo *PI;
       LAMPLoadProfile *LP;
 
-      typedef vector<BasicBlock*>::const_iterator block_iterator;
-      
       typedef map<const Loop * const, unsigned int> InstsPerLoopMap;
       // tracks number of instructions per loop body
       InstsPerLoopMap instsPerLoopMap;
@@ -133,7 +132,7 @@ char StridePrefetch::ID = 0;
 
   bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
     Changed = false;
-    
+
     // initialize instsPerLoop entry for L
     if (instsPerLoopMap.find(L) == instsPerLoopMap.end()) {
       instsPerLoopMap[L] = 0;
@@ -248,7 +247,7 @@ void StridePrefetch::profile(Instruction *inst) {
   loadInfo *profData = getInfo(inst);
 
   // set the trip_count variable
-  profData->trip_count = (int) PI->getExecutionCount(inst->getParent()) / PI->getExecutionCount(Preheader);
+  profData->trip_count = static_cast<int>(PI->getExecutionCount(inst->getParent()) / PI->getExecutionCount(Preheader));
 
   if (PI->getExecutionCount(inst->getParent()) <= FT) {
     return;
@@ -412,6 +411,7 @@ void StridePrefetch::insertWSST(Instruction *inst, const double& K) {
   Module *M = Preheader->getParent()->getParent();
 
   //insert branch
+  //
   BranchInst *BI = BranchInst::Create(prefetchBB, restBB, ICmpPtr, homeBB->getTerminator());
   assert(homeBB->getTerminator()!=NULL && "homeBB term  is now NULL");
   homeBB->getTerminator()->eraseFromParent(); 
@@ -422,41 +422,45 @@ void StridePrefetch::insertWSST(Instruction *inst, const double& K) {
 // Effects: Recursively calculates the number of instructions executed by loop.
 // Modifies: Updates InstsPerLoopMap 
 unsigned StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
-  assert(instsPerLoopMap.find(loop) != instsPerLoopMap.end()
-      && "I don't think that the same loop should be accessed twice");
-  
-  // if the instsPerLoop has been calculated no need to calculate again
-
   // initialize instsPerLoop entry for loop
   if (instsPerLoopMap.find(loop) == instsPerLoopMap.end()) {
     instsPerLoopMap[loop] = 0;
   }
   else {
-    return instsPerLoopMap[loop];
-  }
-  
-  // calculate the instruction in this loop
-  // base case -- check if any subloops
-  //    no subloop then return the instruction count
-  unsigned& inst_count = instsPerLoopMap[loop];
-  
-  for (block_iterator biter = loop->block_begin(), end = loop->block_end(); 
-      biter != end; ++biter) {
-      for (BasicBlock::const_iterator II = (*biter)->begin(), E = (*biter)->end();
-          II != E; ++II) {
-        ++inst_count;
-      }
+    DEBUG(errs() << "loop was already evaluated\n";)
+      return instsPerLoopMap[loop];
   }
 
-  const vector<Loop*> sub_loops = loop->getSubLoops();
+  unsigned& inst_count = instsPerLoopMap[loop];
+
+  // calculates the average number of instructions executed in the body the loop
+  assert(PI->getExecutionCount(loop->getHeader()) > 0 
+      && "Execution count shouldn't be negative");
+  double loop_exec_count = PI->getExecutionCount(loop->getHeader());
+  for (LoopBase<BasicBlock, Loop>::block_iterator biter = loop->block_begin(), end = loop->block_end(); 
+      biter != end; ++biter) {
+
+  assert(PI->getExecutionCount(*biter) > 0 
+      && "Execution count shouldn't be negative");
+    double block_exec_count = PI->getExecutionCount(*biter);
+    // what percentage of the time does this actually get execution
+    double exec_ratio = block_exec_count / loop_exec_count;
+    assert(exec_ratio < 1 && "can't execute block more than the loop inself"); 
+    const BasicBlock::InstListType& inst_list = (*biter)->getInstList();
+    
+    // the adjusted number of executions
+    unsigned adj_num_insts = exec_ratio * inst_list.size();
+    inst_count += adj_num_insts;
+  }
+
   // base case when there are no more subloops
+  const vector<Loop*> sub_loops = loop->getSubLoops();
   if (sub_loops.empty()) {
     return inst_count;
   }
-  
-  unsigned trip_count = loop->getSmallConstantTripCount();
+
   for (unsigned i = 0, size = sub_loops.size(); i < size; ++i) {
-    inst_count += trip_count * getLoopInstructionCount(sub_loops[i]);
+    inst_count += loop_exec_count * getLoopInstructionCount(sub_loops[i]);
   }
 
   return inst_count;
@@ -464,15 +468,13 @@ unsigned StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
 
 void StridePrefetch::insertLoad(Instruction *inst) {
   loadInfo *profData = getInfo(inst);
+/*
+  unsigned total_loop_insts_exec = getLoopInstructionCount(CurrentLoop);
 
-   
-
+  // number of instructions executed on average in that loop
+  unsigned single_loop_insts_exec = total_loop_insts_exec / PI->getExecutionCount(CurrentLoop->getHeader());
+*/
   // TODO: determine K
-
-  // loop over the loop and get the subloops
-  // recursively loop over the subloops 
-  // get the number of instructions in the most innner loop
-  // mutliply 
 
   double K;
   double dataArea = profData->dominant_stride * profData->trip_count;
