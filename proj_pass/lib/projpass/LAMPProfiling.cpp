@@ -157,7 +157,7 @@ void LAMPProfiler::createLampDeclarations(Module* M)
 }
 
 vector<Instruction *> loadsToStride;
-map<Instruction *, unsigned int> loadToExecCount;
+map<Instruction *, double> loadToExecCount;
 
 bool LAMPProfiler::isLoadDynamic(Instruction *inst)
 {
@@ -186,7 +186,7 @@ void LAMPProfiler::doStrides() {
   Value *compare;
   BinaryOperator *newNum;
   int num_profiled = 0;
-  for (int i = 0; i < loadsToStride.size(); i++) {
+  for (unsigned int i = 0; i < loadsToStride.size(); i++) {
     I = loadsToStride[i];
 
     load_id++;
@@ -199,14 +199,15 @@ void LAMPProfiler::doStrides() {
     errs() << "Found dynamic load id<" << load_id << "> inst " << *I <<"\n";
     
     int chunkSize = 30;
-    int exec_count = loadToExecCount[I];
+    double exec_count = loadToExecCount[I];
     // N2 = number to profile ; N1 = number to skip
-    int tmpN2 = 1.0/20.0 * (double)exec_count;
-    tmpN2 = tmpN2 < 1 ? exec_count : tmpN2;
+    int tmpN2 = (int) (1.0/20.0 * exec_count);
+    tmpN2 = tmpN2 < 1 ? (int)exec_count : tmpN2;
     tmpN2 = min(tmpN2, chunkSize);
-    int tmpN1 = 3.0 / 20.0 * (double)exec_count;
+    int tmpN1 = (int) (3.0 / 20.0 * exec_count);
     tmpN1 = tmpN2 == exec_count ? 0 : tmpN1;
-    tmpN1 = tmpN2 == chunkSize ? tmpN1 + 1.0/20.0 * exec_count - chunkSize : tmpN1;
+    tmpN1 = tmpN2 == chunkSize ?
+      tmpN1 + (int)(1.0/20.0 * exec_count) - chunkSize : tmpN1;
 
     errs() << "Profile Num: " << tmpN2 << "\n";
     errs() << "Skip Num: " << tmpN1 << "\n";
@@ -331,7 +332,7 @@ void LAMPProfiler::doStrides() {
     );
     StrideArgs[2] = ConstantInt::get(
       llvm::Type::getInt32Ty(I->getParent()->getParent()->getContext()),
-      exec_count
+      (int)exec_count
     );
 
     CallInst::Create(
