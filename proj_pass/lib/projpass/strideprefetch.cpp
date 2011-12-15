@@ -36,6 +36,7 @@
 #include <vector>
 #include <algorithm>
 #include <cmath>
+#include <map>
 
 //#define PRINT_DEBUG 
 #ifdef PRINT_DEBUG    
@@ -44,7 +45,7 @@
 #  define DEBUG(x)    
 #endif                
 
-
+using std::vector; using std::map;
 using namespace llvm;
 
 namespace llvm {
@@ -52,6 +53,7 @@ namespace llvm {
 }
 
 namespace {
+
   struct StridePrefetch : public LoopPass {
     public:
       static char ID;
@@ -80,6 +82,12 @@ namespace {
       ProfileInfo *PI;
       LAMPLoadProfile *LP;
 
+      typedef vector<BasicBlock*>::const_iterator block_iterator;
+      
+      typedef map<const Loop * const, unsigned int> InstsPerLoopMap;
+      // tracks number of instructions per loop body
+      InstsPerLoopMap instsPerLoopMap;
+
       bool Changed;
       BasicBlock *Preheader;
       Loop *CurrentLoop;
@@ -104,6 +112,7 @@ namespace {
       void actuallyInsertPrefetch(loadInfo* load_info, Instruction *before, 
           Instruction *address, int locality = 3);
       void loopOver(DomTreeNode *N);
+      unsigned getLoopInstructionCount(const Loop * const loop);
   };
 }
 
@@ -124,6 +133,11 @@ INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
 
   bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
     Changed = false;
+    
+    // initialize instsPerLoop entry for L
+    if (instsPerLoopMap.find(L) == instsPerLoopMap.end()) {
+      instsPerLoopMap[L] = 0;
+    }
 
     // clear data structures
     SSST_loads.clear();
@@ -171,6 +185,7 @@ void StridePrefetch::loopOver(DomTreeNode *N) {
   if (!insideSubLoop(BB)) {
 
     for (BasicBlock::iterator II = BB->begin(), E = BB->end(); II != E; II++) {
+
       Instruction *I = II;
       if (dyn_cast<LoadInst>(I) && getInfo(I) != NULL) {
         // TODO - decide if this is an instruction to actually profile?
@@ -256,15 +271,15 @@ void StridePrefetch::profile(Instruction *inst) {
 
   errs() << freq1 << " / "<<exec_count<<" > "<<SSST_T<<"\n"; 
   // cache line stuff...not sure yet?
-  if ((double)freq1 / exec_count > SSST_T) {
+  if (freq1 / exec_count > SSST_T) {
     SSST_loads.insert(inst);
     errs() << "adding to SSST ("<<profData->dominant_stride<<")\n";
   }
-  else if (((double)top_4_freq / exec_count > PMST_T) && ((double)zeroDiff / exec_count) > PMSTD_T) {
+  else if ((top_4_freq / exec_count > PMST_T) && (zeroDiff / exec_count) > PMSTD_T) {
     PMST_loads.insert(inst);
     errs() << "adding to PMST\n";
   }
-  else if (((double)freq1 / exec_count > WSST_T) && ((double)zeroDiff / exec_count > WSSTD_T)) {
+  else if ((freq1 / exec_count > WSST_T) && (zeroDiff / exec_count > WSSTD_T)) {
     WSST_loads.insert(inst);
     errs() << "adding to WSST\n";
   }
@@ -404,10 +419,61 @@ void StridePrefetch::insertWSST(Instruction *inst, const double& K) {
   insertPrefetch(inst, K, subPtr, prefetchBB->getTerminator());
 }
 
+// Effects: Recursively calculates the number of instructions executed by loop.
+// Modifies: Updates InstsPerLoopMap 
+unsigned StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
+  assert(instsPerLoopMap.find(loop) != instsPerLoopMap.end()
+      && "I don't think that the same loop should be accessed twice");
+  
+  // if the instsPerLoop has been calculated no need to calculate again
+
+  // initialize instsPerLoop entry for loop
+  if (instsPerLoopMap.find(loop) == instsPerLoopMap.end()) {
+    instsPerLoopMap[loop] = 0;
+  }
+  else {
+    return instsPerLoopMap[loop];
+  }
+  
+  // calculate the instruction in this loop
+  // base case -- check if any subloops
+  //    no subloop then return the instruction count
+  unsigned& inst_count = instsPerLoopMap[loop];
+  
+  for (block_iterator biter = loop->block_begin(), end = loop->block_end(); 
+      biter != end; ++biter) {
+      for (BasicBlock::const_iterator II = (*biter)->begin(), E = (*biter)->end();
+          II != E; ++II) {
+        ++inst_count;
+      }
+  }
+
+  const vector<Loop*> sub_loops = loop->getSubLoops();
+  // base case when there are no more subloops
+  if (sub_loops.empty()) {
+    return inst_count;
+  }
+  
+  unsigned trip_count = loop->getSmallConstantTripCount();
+  for (unsigned i = 0, size = sub_loops.size(); i < size; ++i) {
+    inst_count += trip_count * getLoopInstructionCount(sub_loops[i]);
+  }
+
+  return inst_count;
+}
+
 void StridePrefetch::insertLoad(Instruction *inst) {
   loadInfo *profData = getInfo(inst);
 
+   
+
   // TODO: determine K
+
+  // loop over the loop and get the subloops
+  // recursively loop over the subloops 
+  // get the number of instructions in the most innner loop
+  // mutliply 
+
   double K;
   double dataArea = profData->dominant_stride * profData->trip_count;
   double C = MAXPREFETCHDISTANCE;
