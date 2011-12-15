@@ -163,7 +163,7 @@ bool LAMPProfiler::isLoadDynamic(Instruction *inst)
 {
     Loop *CurLoop = NULL;
     LoopInfo &LI = getAnalysis<LoopInfo>();
-    bool result = true;
+    
     for(LoopInfo::iterator IT = LI.begin(), ITe = LI.end(); IT != ITe; ++IT)
     {
         if((*IT)->contains(inst)){
@@ -171,22 +171,20 @@ bool LAMPProfiler::isLoadDynamic(Instruction *inst)
             break;
         }
     }
+   //check if load was in loop 
     if(CurLoop == NULL){
-        errs() << "Couldn't find Loop inst belongs to. Uh oh\n";
         return false;
     }
     //If operands are loop invariant, you are always loading the same address
     //strides of 0 get no advantage of prefetch so don't waste time profiling
-    
-    errs() << "Found loop\n";
-    result = !CurLoop->hasLoopInvariantOperands(inst);
-    return result;
+    return !CurLoop->hasLoopInvariantOperands(inst);
 }
+
 void LAMPProfiler::doStrides() {
   Instruction *I;
   Value *compare;
   BinaryOperator *newNum;
-
+  int num_profiled = 0;
   for (int i = 0; i < loadsToStride.size(); i++) {
     I = loadsToStride[i];
 
@@ -194,6 +192,7 @@ void LAMPProfiler::doStrides() {
     
     if(!isLoadDynamic(I))
         continue;
+    num_profiled++;
     errs() << "Found dynamic load id<" << load_id << "> inst " << *I <<"\n";
     int chunkSize = 30;
     int exec_count = loadToExecCount[I];
@@ -339,6 +338,7 @@ void LAMPProfiler::doStrides() {
       strideBB->getTerminator()
     ); 
   }
+  errs() << "num_profiled is <"<<num_profiled<<"> \n";
 }
 
 bool LAMPProfiler::runOnFunction(Function &F) {
