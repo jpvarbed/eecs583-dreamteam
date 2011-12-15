@@ -95,11 +95,11 @@ namespace {
       loadInfo* getInfo(Instruction* inst);
       void profile(Instruction* inst);
       BinaryOperator *scratchAndSub(Instruction *inst);
-      void insertPrefetchInsts(const set<Instruction*> loads);
-      void insertPrefetch(Instruction *inst, double K, BinaryOperator *sub, Instruction *before);
-      void insertSSST(Instruction *inst, double K);
-      void insertPMST(Instruction *inst, double K);
-      void insertWSST(Instruction *inst, double K);
+      void insertPrefetchInsts(const set<Instruction*>& loads);
+      void insertPrefetch(Instruction *inst, const doubledouble K K, BinaryOperator *sub, Instruction *before);
+      void insertSSST(Instruction *inst, const doubledouble K K);
+      void insertPMST(Instruction *inst, const doubledouble K K);
+      void insertWSST(Instruction *inst, const doubledouble K K);
       void insertLoad(Instruction *inst);
       void actuallyInsertPrefetch(loadInfo* load_info, Instruction *before, 
           Instruction *address, int locality = 3);
@@ -154,7 +154,7 @@ INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
   }
 
 // Inserts prefetch instructions for the loads that are SSST, PMST, and WSST.
-void StridePrefetch::insertPrefetchInsts(const set<Instruction*> loads) {
+void StridePrefetch::insertPrefetchInsts(const set<Instruction*>& loads) {
   set<Instruction*>::const_iterator loadIter;
   for (loadIter = loads.begin(); loadIter != loads.end(); ++loadIter) {
     insertLoad(*loadIter);
@@ -302,7 +302,7 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
 }
 
 // inserts prefetch(addr(inst)+sub*K)
-void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator *sub, Instruction *before = NULL) {
+void StridePrefetch::insertPrefetch(Instruction *inst, const doubledouble K K, BinaryOperator *sub, Instruction *before = NULL) {
   LLVMContext &context = Preheader->getParent()->getContext();
 
   BinaryOperator *addition;
@@ -356,13 +356,13 @@ void StridePrefetch::insertPrefetch(Instruction *inst, double K, BinaryOperator 
 }
 
 // insert just prefetch(P+K*S)
-void StridePrefetch::insertSSST(Instruction *inst, double K) {
+void StridePrefetch::insertSSST(Instruction *inst, const doubledouble K K) {
   insertPrefetch(inst, K, NULL, inst);
 }
 
 // scratch sub
 // prefetch(addr(load)+K*stride) before the load, K is rounded to a power of 2, 
-void StridePrefetch::insertPMST(Instruction *inst, double K) {
+void StridePrefetch::insertPMST(Instruction *inst, const doubledouble K K) {
   BinaryOperator *subPtr = scratchAndSub(inst);
   insertPrefetch(inst, K, subPtr, inst);
 }
@@ -370,7 +370,7 @@ void StridePrefetch::insertPMST(Instruction *inst, double K) {
 // scratch sub
 // p=(stride==profiled stride)
 // p?prefetch(P+K*stride)
-void StridePrefetch::insertWSST(Instruction *inst, double K) {
+void StridePrefetch::insertWSST(Instruction *inst, const doubledouble K K) {
 
   LLVMContext &context = Preheader->getParent()->getContext();
 
