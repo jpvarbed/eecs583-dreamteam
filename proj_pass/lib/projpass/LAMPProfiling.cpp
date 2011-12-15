@@ -95,7 +95,7 @@ namespace {
   class LAMPProfiler : public FunctionPass {
     bool runOnFunction(Function& F);
     void doStrides();
-
+    bool isLoadDynamic(Instruction *inst);
     ProfileInfo *PI;
     LoopInfo *LI;
     Constant* StrideProfileFn;
@@ -159,6 +159,29 @@ void LAMPProfiler::createLampDeclarations(Module* M)
 vector<Instruction *> loadsToStride;
 map<Instruction *, unsigned int> loadToExecCount;
 
+bool LAMPProfiler::isLoadDynamic(Instruction *inst)
+{
+    Loop *CurLoop = NULL;
+    LoopInfo &LI = getAnalysis<LoopInfo>();
+    bool result = true;
+    for(LoopInfo::iterator IT = LI.begin(), ITe = LI.end(); IT != ITe; ++IT)
+    {
+        if((*IT)->contains(inst)){
+            CurLoop = *IT;
+            break;
+        }
+    }
+    if(CurLoop == NULL){
+        errs() << "Couldn't find Loop inst belongs to. Uh oh\n";
+        return false;
+    }
+    //If operands are loop invariant, you are always loading the same address
+    //strides of 0 get no advantage of prefetch so don't waste time profiling
+    
+    errs() << "Found loop\n";
+    result = !CurLoop->hasLoopInvariantOperands(inst);
+    return result;
+}
 void LAMPProfiler::doStrides() {
   Instruction *I;
   Value *compare;
@@ -169,6 +192,9 @@ void LAMPProfiler::doStrides() {
 
     load_id++;
     
+    if(!isLoadDynamic(I))
+        continue;
+    errs() << "Found dynamic load\n";
     int chunkSize = 30;
     int exec_count = loadToExecCount[I];
     // N2 = number to profile ; N1 = number to skip
