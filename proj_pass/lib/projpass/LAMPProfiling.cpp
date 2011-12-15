@@ -166,15 +166,16 @@ bool LAMPProfiler::isLoadDynamic(Instruction *inst)
     
     for(LoopInfo::iterator IT = LI.begin(), ITe = LI.end(); IT != ITe; ++IT)
     {
-        if((*IT)->contains(inst)){
+        if ((*IT)->contains(inst)) {
             CurLoop = *IT;
             break;
         }
     }
-   //check if load was in loop 
-    if(CurLoop == NULL){
+    
+    if (CurLoop == NULL) {
         return false;
     }
+
     //If operands are loop invariant, you are always loading the same address
     //strides of 0 get no advantage of prefetch so don't waste time profiling
     return !CurLoop->hasLoopInvariantOperands(inst);
@@ -190,10 +191,13 @@ void LAMPProfiler::doStrides() {
 
     load_id++;
     
-    if(!isLoadDynamic(I))
+    if(!isLoadDynamic(I)) {
         continue;
+    }
+    
     num_profiled++;
     errs() << "Found dynamic load id<" << load_id << "> inst " << *I <<"\n";
+    
     int chunkSize = 30;
     int exec_count = loadToExecCount[I];
     // N2 = number to profile ; N1 = number to skip

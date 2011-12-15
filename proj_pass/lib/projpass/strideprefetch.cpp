@@ -127,7 +127,7 @@ char StridePrefetch::ID = 0;
   INITIALIZE_PASS_DEPENDENCY(DominatorTree)
   INITIALIZE_PASS_DEPENDENCY(LoopInfo)
   INITIALIZE_PASS_DEPENDENCY(LoopSimplify)
-INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
+    INITIALIZE_AG_DEPENDENCY(AliasAnalysis)
   INITIALIZE_PASS_END(StridePrefetch, "strideprefetch", "Stride Prefetching", false, false)
   static RegisterPass<StridePrefetch> X("projpass", "LICM Pass", true, true);
 
@@ -220,13 +220,13 @@ void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info,
   Module *module = Preheader->getParent()->getParent();
   Constant* prefetchFn;
   prefetchFn = module->getOrInsertFunction(
-      "llvm.prefetch",
-      llvm::Type::getVoidTy(context),
-      llvm::Type::getInt8PtrTy(context),
-      llvm::Type::getInt32Ty(context),
-      llvm::Type::getInt32Ty(context),
-      (Type *) 0
-      );
+    "llvm.prefetch",
+    llvm::Type::getVoidTy(context),
+    llvm::Type::getInt8PtrTy(context),
+    llvm::Type::getInt32Ty(context),
+    llvm::Type::getInt32Ty(context),
+    (Type *) 0
+  );
 
   IntToPtrInst *newAddr = new IntToPtrInst(address, llvm::Type::getInt8PtrTy(context), "inttoptr", before);
 
