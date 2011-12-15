@@ -37,6 +37,14 @@
 #include <algorithm>
 #include <cmath>
 
+//#define PRINT_DEBUG 
+#ifdef PRINT_DEBUG    
+#  define DEBUG(x) x  
+#else                 
+#  define DEBUG(x)    
+#endif                
+
+
 using namespace llvm;
 
 namespace llvm {

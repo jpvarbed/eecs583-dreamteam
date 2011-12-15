@@ -29,12 +29,12 @@ void profile(Instruction *inst) {
   if (PI->getExecutionCount(inst->getParent()) =< FT) {
     continue;
   }
-  
+
   //assume that loads passed in are in loops
   if (PI->getExecutionCount(Preheader) =< TT) {
     continue;
   }
-  
+
   freq1 = profData.freq[0];
   num_strides = profData.num_strides;
   for (unsigned int i = 0; i < profData.freq.size(); i++) {
