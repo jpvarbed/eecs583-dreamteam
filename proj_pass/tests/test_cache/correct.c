@@ -15,7 +15,7 @@ double t_diff;
   int i, j, k;
 int main(int argc, char* argv[]) {
   if (argc < 2) {
-    printf("Put a fucking size!\n");
+    printf("Excuse me kind sir, but could you ever so kindly provide a size. I sincerely thank you.\n");
     return 0;
   }
   int h = 0;
