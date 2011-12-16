@@ -46,7 +46,7 @@
 #  define DEBUG(x)    
 #endif                
 
-using std::vector; using std::map;
+using namespace std;
 using namespace llvm;
 
 namespace llvm {
@@ -247,7 +247,9 @@ void StridePrefetch::profile(Instruction *inst) {
   loadInfo *profData = getInfo(inst);
 
   // set the trip_count variable
-  profData->trip_count = static_cast<int>(PI->getExecutionCount(inst->getParent()) / PI->getExecutionCount(Preheader));
+  profData->trip_count = static_cast<int>(
+    PI->getExecutionCount(CurrentLoop->getHeader()) / PI->getExecutionCount(Preheader)
+  );
 
   if (PI->getExecutionCount(inst->getParent()) <= FT) {
     return;
@@ -364,8 +366,9 @@ void StridePrefetch::insertPrefetch(Instruction *inst, const double& K, BinaryOp
         inst
         );
   }
-  if(before == NULL)
+  if (before == NULL) {
     before = inst;
+  }
   actuallyInsertPrefetch(getInfo(inst), before, addition, 0);
 }
 
@@ -397,23 +400,22 @@ void StridePrefetch::insertWSST(Instruction *inst, const double& K) {
   PtrToIntInst *AddrToInt = new PtrToIntInst(loadAddr, llvm::Type::getInt32Ty(context), "bitcast", inst);
 
   ICmpInst *ICmpPtr = new ICmpInst(
-      inst, 
-      ICmpInst::ICMP_EQ,
-      AddrToInt,
-      ConstantInt::get(dyn_cast<LoadInst>(inst)->getPointerOperand()->getType(), profiled_stride), 
-      "cmpweak"
-      );
+    inst, 
+    ICmpInst::ICMP_EQ,
+    AddrToInt,
+    ConstantInt::get(dyn_cast<LoadInst>(inst)->getPointerOperand()->getType(), profiled_stride), 
+    "cmpweak"
+  );
   BasicBlock* homeBB = inst->getParent();
   BasicBlock* prefetchBB = SplitBlock(homeBB, ICmpPtr, this);
   BasicBlock::iterator ITER = prefetchBB->begin();
   Instruction& secondI = *(++ITER);
   BasicBlock* restBB = SplitBlock(prefetchBB, &secondI,this);
-  Module *M = Preheader->getParent()->getParent();
 
   //insert branch
   //
   BranchInst *BI = BranchInst::Create(prefetchBB, restBB, ICmpPtr, homeBB->getTerminator());
-  assert(homeBB->getTerminator()!=NULL && "homeBB term  is now NULL");
+  assert(homeBB->getTerminator() != NULL && "homeBB term  is now NULL");
   homeBB->getTerminator()->eraseFromParent(); 
 
   insertPrefetch(inst, K, subPtr, prefetchBB->getTerminator());
@@ -421,17 +423,17 @@ void StridePrefetch::insertWSST(Instruction *inst, const double& K) {
 
 // Effects: Recursively calculates the number of instructions executed by loop.
 // Modifies: Updates InstsPerLoopMap 
-unsigned StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
+unsigned int StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
   // initialize instsPerLoop entry for loop
   if (instsPerLoopMap.find(loop) == instsPerLoopMap.end()) {
     instsPerLoopMap[loop] = 0;
   }
   else {
-    DEBUG(errs() << "loop was already evaluated\n";)
-      return instsPerLoopMap[loop];
+    DEBUG(errs() << "loop was already evaluated\n";);
+    return instsPerLoopMap[loop];
   }
 
-  unsigned& inst_count = instsPerLoopMap[loop];
+  unsigned int &inst_count = instsPerLoopMap[loop];
 
   // calculates the average number of instructions executed in the body the loop
   assert(PI->getExecutionCount(loop->getHeader()) > 0 
@@ -440,7 +442,7 @@ unsigned StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
   for (LoopBase<BasicBlock, Loop>::block_iterator biter = loop->block_begin(), end = loop->block_end(); 
       biter != end; ++biter) {
 
-  assert(PI->getExecutionCount(*biter) > 0 
+    assert(PI->getExecutionCount(*biter) > 0 
       && "Execution count shouldn't be negative");
     double block_exec_count = PI->getExecutionCount(*biter);
     // what percentage of the time does this actually get execution
@@ -449,7 +451,7 @@ unsigned StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
     const BasicBlock::InstListType& inst_list = (*biter)->getInstList();
     
     // the adjusted number of executions
-    unsigned adj_num_insts = exec_ratio * inst_list.size();
+    unsigned int adj_num_insts = exec_ratio * inst_list.size();
     inst_count += adj_num_insts;
   }
 
@@ -459,7 +461,7 @@ unsigned StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
     return inst_count;
   }
 
-  for (unsigned i = 0, size = sub_loops.size(); i < size; ++i) {
+  for (unsigned int i = 0, size = sub_loops.size(); i < size; ++i) {
     inst_count += loop_exec_count * getLoopInstructionCount(sub_loops[i]);
   }
 
@@ -468,18 +470,18 @@ unsigned StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
 
 void StridePrefetch::insertLoad(Instruction *inst) {
   loadInfo *profData = getInfo(inst);
-/*
-  unsigned total_loop_insts_exec = getLoopInstructionCount(CurrentLoop);
-
+ 
+  unsigned int total_loop_insts_exec = getLoopInstructionCount(CurrentLoop);
   // number of instructions executed on average in that loop
-  unsigned single_loop_insts_exec = total_loop_insts_exec / PI->getExecutionCount(CurrentLoop->getHeader());
-*/
-  // TODO: determine K
-
+  unsigned int single_loop_insts_exec = total_loop_insts_exec / PI->getExecutionCount(CurrentLoop->getHeader());
+ 
   double K;
+  if (total_loop_insts_exec < 200) {
+    K = MEMORY_LATENCY / total_loop_insts_exec;
+  }
+  K = min(K, (double)8);
+
   double dataArea = profData->dominant_stride * profData->trip_count;
-  double C = MAXPREFETCHDISTANCE;
-  K = min((double) profData->trip_count/TT, C);
 
   // we can incorporate cache stuff if need be
   // call the corresponding load list

@@ -31,6 +31,7 @@
 #define WSSTD_T 0.10
 #define MAXPREFETCHDISTANCE 4
 #define NUM_TOP_FREQ 4
+#define MEMORY_LATENCY 200 // approximate value for mem latency
 
 using namespace llvm;
 using namespace std;
