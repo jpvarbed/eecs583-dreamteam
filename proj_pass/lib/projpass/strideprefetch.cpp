@@ -270,15 +270,15 @@ void StridePrefetch::profile(Instruction *inst) {
 
   errs() << freq1 << " / "<<exec_count<<" > "<<SSST_T<<"\n"; 
   // cache line stuff...not sure yet?
-  if (freq1 / exec_count > SSST_T) {
+  if ((double)freq1 / exec_count > SSST_T) {
     SSST_loads.insert(inst);
     errs() << "adding to SSST ("<<profData->dominant_stride<<")\n";
   }
-  else if ((top_4_freq / exec_count > PMST_T) && (zeroDiff / exec_count) > PMSTD_T) {
+  else if (((double)top_4_freq / exec_count > PMST_T) && ((double)zeroDiff / exec_count) > PMSTD_T) {
     PMST_loads.insert(inst);
     errs() << "adding to PMST\n";
   }
-  else if ((freq1 / exec_count > WSST_T) && (zeroDiff / exec_count > WSSTD_T)) {
+  else if (((double)freq1 / exec_count > WSST_T) && ((double)zeroDiff / exec_count > WSSTD_T)) {
     WSST_loads.insert(inst);
     errs() << "adding to WSST\n";
   }
