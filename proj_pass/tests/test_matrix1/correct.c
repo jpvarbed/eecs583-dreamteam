@@ -45,6 +45,7 @@ int main(int argc, char* argv[]) {
 */
   gettimeofday(&t_start,NULL);
 
+  int a = 0, b = 0, c = 1, d = 1;
   int sum = 0;
   // multiply the matrices
   for (i = 0; i < SIZE; i++) {
@@ -52,9 +53,10 @@ int main(int argc, char* argv[]) {
       for (k = 0; k < SIZE; k++) {
         //printf("LO");
         sum += A[k][0] * 53 * B[k][0];
-        int a = 53 * sum;
-        int b = a * a;
-        int c = b * c * b*c*32423*b*c*c*c;
+        a = 53 * sum;
+        b = a * a;
+        c = b * c * b*c*32423*b*c*c*c;
+        d  = b * c * b*c*32423*b*d*d;
       }
     }
   }
