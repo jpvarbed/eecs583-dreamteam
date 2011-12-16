@@ -444,25 +444,12 @@ unsigned int StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
 
     assert(PI->getExecutionCount(*biter) > 0 
       && "Execution count shouldn't be negative");
-    // what percentage of the time does this actually get execution
+
+    unsigned int block_exec_count = PI->getExecutionCount(*biter);
     const BasicBlock::InstListType& inst_list = (*biter)->getInstList();
     
-    inst_count += inst_list.size();
+    inst_count += block_exec_count * inst_list.size();
   }
-
-  // base case when there are no more subloops
-  const vector<Loop*> sub_loops = loop->getSubLoops();
-  if (sub_loops.empty()) {
-    return inst_count;
-  }
-
-  for (unsigned int i = 0, size = sub_loops.size(); i < size; ++i) {
-    inst_count += getLoopInstructionCount(sub_loops[i]);
-  }
- 
-  // the number of instructions executed is averaged over the number of times 
-  // the loop was executed 
-  inst_count /= loop_exec_count;
 
   return inst_count;
 }
