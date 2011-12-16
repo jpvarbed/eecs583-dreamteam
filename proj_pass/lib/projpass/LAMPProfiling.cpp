@@ -36,8 +36,8 @@ namespace {
       static bool flag;
       bool runOnModule(Module &M);
       static unsigned int num_loads;
-      static unsigned int num_stores;
       static unsigned int num_calls;
+      static unsigned int num_stores;
       static unsigned int num_loops;
       LdStCallCounter(): ModulePass(ID)
     {
