@@ -442,10 +442,10 @@ unsigned int StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
     unsigned int block_exec_count = PI->getExecutionCount(*biter);
     const BasicBlock::InstListType& inst_list = (*biter)->getInstList();
     
-    inst_count += block_exec_count * inst_list.size();
+    inst_count += block_exec_count * (double)inst_list.size();
   }
 
-  return inst_count;
+  return (double)inst_count / PI->getExecutionCount(loop->getHeader());
 }
 
 void StridePrefetch::insertLoad(Instruction *inst) {
@@ -456,6 +456,7 @@ void StridePrefetch::insertLoad(Instruction *inst) {
   unsigned int single_loop_insts_exec = total_loop_insts_exec / PI->getExecutionCount(CurrentLoop->getHeader());
  
   double K = 8;
+  errs()<<"totalinstexec: " << total_loop_insts_exec<<"\n";
   if (total_loop_insts_exec < 200) {
     K = MEMORY_LATENCY / total_loop_insts_exec;
   }

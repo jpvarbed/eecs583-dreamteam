@@ -21,7 +21,9 @@
 #include <set>
 #include <map>
 #include <algorithm>
+
 #include "loadstride.h"
+#include "profilefeedback.h"
 
 using namespace llvm;
 using namespace std;
@@ -191,13 +193,13 @@ void LAMPProfiler::doStrides() {
 
     load_id++;
     
-    if(!isLoadDynamic(I)) {
+    if(!isLoadDynamic(I) || loadToExecCount[I] < FT) {
         continue;
     }
     
     num_profiled++;
-    errs() << "Found dynamic load id<" << load_id << "> inst " << *I <<"\n";
-    
+    errs() << "Found dynamic load id<" << load_id << "> ("<<(loadToExecCount[I])<<") inst " << *I <<"\n";
+
     int chunkSize = 30;
     double exec_count = loadToExecCount[I];
     // N2 = number to profile ; N1 = number to skip
