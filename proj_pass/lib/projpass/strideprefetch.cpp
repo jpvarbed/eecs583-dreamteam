@@ -39,7 +39,7 @@
 #include <cmath>
 #include <map>
 
-//#define PRINT_DEBUG 
+#define PRINT_DEBUG 
 #ifdef PRINT_DEBUG    
 #  define DEBUG(x) x  
 #else                 
@@ -444,15 +444,10 @@ unsigned int StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
 
     assert(PI->getExecutionCount(*biter) > 0 
       && "Execution count shouldn't be negative");
-    double block_exec_count = PI->getExecutionCount(*biter);
     // what percentage of the time does this actually get execution
-    double exec_ratio = block_exec_count / loop_exec_count;
-    assert(exec_ratio < 1 && "can't execute block more than the loop inself"); 
     const BasicBlock::InstListType& inst_list = (*biter)->getInstList();
     
-    // the adjusted number of executions
-    unsigned int adj_num_insts = exec_ratio * inst_list.size();
-    inst_count += adj_num_insts;
+    inst_count += inst_list.size();
   }
 
   // base case when there are no more subloops
@@ -462,8 +457,12 @@ unsigned int StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
   }
 
   for (unsigned int i = 0, size = sub_loops.size(); i < size; ++i) {
-    inst_count += loop_exec_count * getLoopInstructionCount(sub_loops[i]);
+    inst_count += getLoopInstructionCount(sub_loops[i]);
   }
+ 
+  // the number of instructions executed is averaged over the number of times 
+  // the loop was executed 
+  inst_count /= loop_exec_count;
 
   return inst_count;
 }
