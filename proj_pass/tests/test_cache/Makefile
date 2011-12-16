@@ -3,25 +3,25 @@
 default:
 	 make clean
 	 g++ correct.c -o correct_correct
-	 ./correct_correct > output_correct
+	 ./correct_correct ${s} > output_correct
 	 llvm-gcc -emit-llvm correct.c -c -o correct.bc
 	 opt -loop-simplify correct.bc -o correct.ls.bc
 	 llc correct.ls.bc -o correct.ls.s
 	 g++ -o correct.ls correct.ls.s
-	 ./correct.ls > output_correct_ls
+	 ./correct.ls ${s} > output_correct_ls
 	 opt -mem2reg correct.ls.bc -o correct.ls.mem2reg.bc
 	 llc correct.ls.mem2reg.bc -o correct.ls.mem2reg.s
 	 g++ -o correct.ls.mem2reg correct.ls.mem2reg.s
 	 opt -insert-edge-profiling correct.ls.bc -o correct.profile.bc
 	 llc correct.profile.bc -o correct.profile.s
 	 g++ -o correct.profile correct.profile.s ${LLVMDIR}/Release/lib/profile_rt.so
-	 -./correct.profile > output_profile
+	 -./correct.profile ${s} > output_profile
 	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-insts -profile-loader -profile-info-file=llvmprof.out -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init < correct.ls.bc > correct.lamp.bc
 	 opt -mem2reg correct.lamp.bc -o correct.lamp.mem2reg.bc
 	 llvm-dis correct.lamp.mem2reg.bc -o correct.lamp.mem2reg.ll
 	 llc correct.lamp.mem2reg.bc -o correct.lamp.s
 	 g++ -o correct.lamp correct.lamp.s ${LLVMDIR}/Release/lib/profile_rt.so ${PROJDIR}/tools/lamp-profiler/lamp_hooks.o ${PROJDIR}/tools/lamp-profiler/loadstride.cxx
-	 -./correct.lamp > output
+	 -./correct.lamp ${s} > output
 	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-inst-cnt -lamp-map-loop -lamp-load-profile -profile-loader -profile-info-file=llvmprof.out -projpass correct.ls.bc > correct.prefetch.bc
 	llc correct.prefetch.bc -o correct.prefetch.s
 	llvm-dis correct.prefetch.bc -o correct.prefetch.ll
@@ -39,8 +39,8 @@ default:
 	mv cfg.main.dot cfg.prefetch.mem2reg.dot
 	rm -f cfg.main.dot
 
-	-./correct.prefetch.mem2reg > output_prefetch
-	-./correct.ls.mem2reg > output_correct_ls_mem2reg
+	-./correct.prefetch.mem2reg ${s} > output_prefetch
+	-./correct.ls.mem2reg ${s} > output_correct_ls_mem2reg
 	tail output_correct_ls_mem2reg
 	tail output_prefetch
 	

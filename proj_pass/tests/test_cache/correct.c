@@ -3,20 +3,25 @@
 
 */
 
+#include "stdlib.h"
 #include "stdio.h"
 #include <sys/types.h>
 #include <sys/time.h>
 
-#define SIZE 300
-
 struct timeval t_start, t_end;
 double t_diff;
 
-int A[SIZE][SIZE];
-int B[SIZE][SIZE];
-
-int main() {
   int i, j, k;
+int main(int argc, char* argv[]) {
+  if (argc < 2) {
+    printf("Put a fucking size!\n");
+    return 0;
+  }
+  int SIZE = atoi(argv[1]);
+
+  int A[SIZE][SIZE];
+  int B[SIZE][SIZE];
+
   
   // fill in the matrices
   for (i = 0; i < SIZE; i++) {

@@ -133,11 +133,6 @@ char StridePrefetch::ID = 0;
   bool StridePrefetch::runOnLoop(Loop *L, LPPassManager &LPM) {
     Changed = false;
 
-    // initialize instsPerLoop entry for L
-    if (instsPerLoopMap.find(L) == instsPerLoopMap.end()) {
-      instsPerLoopMap[L] = 0;
-    }
-
     // clear data structures
     SSST_loads.clear();
     PMST_loads.clear();
@@ -429,7 +424,7 @@ unsigned int StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
     instsPerLoopMap[loop] = 0;
   }
   else {
-    DEBUG(errs() << "loop was already evaluated\n";);
+    errs() << "loop was already evaluated\n";
     return instsPerLoopMap[loop];
   }
 
@@ -441,7 +436,6 @@ unsigned int StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
   double loop_exec_count = PI->getExecutionCount(loop->getHeader());
   for (LoopBase<BasicBlock, Loop>::block_iterator biter = loop->block_begin(), end = loop->block_end(); 
       biter != end; ++biter) {
-
     assert(PI->getExecutionCount(*biter) > 0 
       && "Execution count shouldn't be negative");
 
@@ -461,7 +455,7 @@ void StridePrefetch::insertLoad(Instruction *inst) {
   // number of instructions executed on average in that loop
   unsigned int single_loop_insts_exec = total_loop_insts_exec / PI->getExecutionCount(CurrentLoop->getHeader());
  
-  double K;
+  double K = 8;
   if (total_loop_insts_exec < 200) {
     K = MEMORY_LATENCY / total_loop_insts_exec;
   }
@@ -469,6 +463,7 @@ void StridePrefetch::insertLoad(Instruction *inst) {
 
   double dataArea = profData->dominant_stride * profData->trip_count;
 
+  errs() << "K: " << K << "\n";
   // we can incorporate cache stuff if need be
   // call the corresponding load list
   set <Instruction*>::iterator loadIT;
