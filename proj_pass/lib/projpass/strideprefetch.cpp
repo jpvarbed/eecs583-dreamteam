@@ -326,7 +326,11 @@ void StridePrefetch::insertPrefetch(Instruction *inst, const double& K, BinaryOp
 
   BinaryOperator *addition;
   Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
-  PtrToIntInst *newLoadAddr = new PtrToIntInst(loadAddr, llvm::Type::getInt32Ty(context), "bitcast", inst);
+  if (before == NULL) {
+        before = inst;
+  }
+
+  PtrToIntInst *newLoadAddr = new PtrToIntInst(loadAddr, llvm::Type::getInt32Ty(context), "ptrtointPre", before);
 
   if (sub == NULL) {
     // S is the dominant_stride in loadInfo
@@ -353,24 +357,21 @@ void StridePrefetch::insertPrefetch(Instruction *inst, const double& K, BinaryOp
 
     // take the log base 2 of K to get the number of bits to shift left
     newK = (unsigned int) log2(newK);
-
+    
     BinaryOperator *shiftResult = BinaryOperator::Create(
         Instruction::Shl,
         sub,
         ConstantInt::get(llvm::Type::getInt32Ty(context), newK),
         "shiftleft",
-        inst
+        before
         );
     addition = BinaryOperator::Create(
         Instruction::Add,
         newLoadAddr,
         shiftResult,
         "addition",
-        inst
+        before
         );
-  }
-  if (before == NULL) {
-    before = inst;
   }
   actuallyInsertPrefetch(getInfo(inst), before, addition, 0);
 }
@@ -400,7 +401,7 @@ void StridePrefetch::insertWSST(Instruction *inst, const double& K) {
   int profiled_stride = profData->dominant_stride;
 
   Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
-  PtrToIntInst *AddrToInt = new PtrToIntInst(loadAddr, llvm::Type::getInt32Ty(context), "bitcast", inst);
+  PtrToIntInst *AddrToInt = new PtrToIntInst(loadAddr, llvm::Type::getInt32Ty(context), "PtrtoIntWST", inst);
 
   ICmpInst *ICmpPtr = new ICmpInst(
     inst, 
@@ -410,10 +411,9 @@ void StridePrefetch::insertWSST(Instruction *inst, const double& K) {
     "cmpweak"
   );
   BasicBlock* homeBB = inst->getParent();
-  BasicBlock* prefetchBB = SplitBlock(homeBB, ICmpPtr, this);
+  BasicBlock* prefetchBB = SplitBlock(homeBB, inst, this);
   BasicBlock::iterator ITER = prefetchBB->begin();
-  Instruction& secondI = *(++ITER);
-  BasicBlock* restBB = SplitBlock(prefetchBB, &secondI,this);
+  BasicBlock* restBB = SplitBlock(prefetchBB, inst,this);
 
   //insert branch
   //
