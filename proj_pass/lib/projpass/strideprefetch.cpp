@@ -256,7 +256,10 @@ void StridePrefetch::profile(Instruction *inst) {
 
   freq1 = profData->top_freqs[0];
   exec_count = profData->exec_count;
-
+  if(exec_count <= 0){
+    errs() << "zerodiff got through\n";
+    return;
+  }
   assert(exec_count && "exec_count in profile is 0");
 
   for (unsigned int i = 0; i < profData->top_freqs.size(); i++) {
@@ -265,8 +268,10 @@ void StridePrefetch::profile(Instruction *inst) {
 
   zeroDiff = profData->num_zero_diff;
 
-  errs() << freq1 << " / "<<exec_count<<" > "<<SSST_T<<"\n"; 
+  errs() << freq1 << " / "<<exec_count<<" > "<<SSST_T<<"\n";
   // cache line stuff...not sure yet?
+  
+  errs() << "top4 <" << top_4_freq << "> PMST <" << PMST_T << "> zeroDiff <" << zeroDiff <<"> PMSTD_T <" << PMSTD_T << ">\n";
   if ((double)freq1 / exec_count > SSST_T) {
     SSST_loads.insert(inst);
     errs() << "adding to SSST ("<<profData->dominant_stride<<")\n";

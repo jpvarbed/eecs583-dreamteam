@@ -47,12 +47,17 @@ int main(int argc, char* argv[]) {
 
   int a = 0, b = 0, c = 1, d = 1;
   int sum = 0;
+  int loadAmt = 0;
   // multiply the matrices
   for (i = 0; i < SIZE; i++) {
     for (j = 0; j < SIZE; j++) {
       for (k = 0; k < SIZE; k++) {
         //printf("LO");
-        sum += A[k%2][0] * 53 * B[k%2][0];
+        if(k < (double)2.0/5.0*SIZE)
+            loadAmt = 0;
+        else
+            loadAmt = k%2;
+        sum += A[loadAmt][0] * 53 * B[loadAmt][0];
         a = 53 * sum;
         b = a * a;
         c = b * c * b*c*32423*b*c*c*c;
