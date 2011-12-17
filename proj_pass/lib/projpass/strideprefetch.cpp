@@ -200,7 +200,7 @@ loadInfo* StridePrefetch::getInfo(Instruction* inst) {
   map<Instruction*, loadInfo*>::iterator findInfo;
   findInfo = LP->LoadToLoadInfo.find(inst);
   if (findInfo == LP->LoadToLoadInfo.end()) {
-    errs() << "couldnt find " << *inst << " in getInfo!\n";
+    //errs() << "couldnt find " << *inst << " in getInfo!\n";
     return NULL;
   }
   return findInfo->second;
@@ -294,23 +294,26 @@ void StridePrefetch::profile(Instruction *inst) {
 // insert a subtract stride = addr(load) - scratch
 // scratch = addr(load)
 BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
-  BasicBlock *entryBlock = &inst->getParent()->getParent()->getEntryBlock();
 
+  LLVMContext &context = Preheader->getParent()->getContext();
   // make alloca for scratch reg
   Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
   AllocaInst *scratchPtr = new AllocaInst(
       loadAddr->getType(),
       "scratch" + inst->getName(),
-      entryBlock
+      inst->getParent()->getParent()->getEntryBlock().begin()
       ); 
+  LoadInst *loadPtr = new LoadInst(scratchPtr,"loadscr", inst);
+  StoreInst *storePtr = new StoreInst(loadAddr, scratchPtr, inst);
 
-  StoreInst *storePtr = new StoreInst(scratchPtr, loadAddr, inst);
-
+  PtrToIntInst *loadInt = new PtrToIntInst(loadAddr, llvm::Type::getInt32Ty(context), "transAddr", inst);
+  
+  PtrToIntInst *scrInt = new PtrToIntInst(loadPtr, llvm::Type::getInt32Ty(context), "transScr", inst);
   // stride = addr(load) - scratch
   BinaryOperator *subPtr = BinaryOperator::Create(
       Instruction::Sub,
-      loadAddr,
-      scratchPtr,
+      loadInt,
+      scrInt,
       "stride",
       storePtr
       );
