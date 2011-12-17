@@ -55,7 +55,7 @@ int main(int argc, char* argv[]) {
         //printf("LO");
         if(k < (double).41*SIZE)
             loadAmt = 0;
-        else if(k <(double).78*SIZE)
+        else if(k <(double).65*SIZE)
             loadAmt = k;
         else
             loadAmt = k%2;

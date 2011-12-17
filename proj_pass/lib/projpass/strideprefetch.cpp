@@ -315,7 +315,7 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
       loadInt,
       scrInt,
       "stride",
-      storePtr
+      inst
       );
   return subPtr;
 }
