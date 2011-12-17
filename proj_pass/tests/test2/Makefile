@@ -2,57 +2,54 @@
 
 default:
 	 make clean
-	 g++ correct.c -o correct_correct
-	 ./correct_correct > output_correct
-	 llvm-gcc -emit-llvm correct.c -c -o correct.bc
-	 opt -loop-simplify correct.bc -o correct.ls.bc
-	 llc correct.ls.bc -o correct.ls.s
-	 g++ -o correct.ls correct.ls.s
-	 ./correct.ls > output_correct_ls
-	 opt -mem2reg correct.ls.bc -o correct.ls.mem2reg.bc
-	 llc correct.ls.mem2reg.bc -o correct.ls.mem2reg.s
+	 g++ correct.c -o correct_correct # get the correct version just compiled with g++
+	 ./correct_correct ${s} > output_correct # run the correct version compiled with g++
+	 llvm-gcc -emit-llvm correct.c -c -o correct.bc # generates LLVM bitcode files
+	 opt -loop-simplify correct.bc -o correct.ls.bc # canonicalizes natural loops
+	 llc correct.ls.bc -o correct.ls.s # compiles the bitcode to assembly language for a specified architecture. this assembly then can be passed thorugh a native assembler and linker to generate native code
+	 # the -o for llc means that the output will be also sent to the standard output
+	 g++ -o correct.ls correct.ls.s # g++ compiles the assembly into native code, i.e., binary. 
+	 ./correct.ls ${s} > output_correct_ls
+	 opt -mem2reg correct.ls.bc -o correct.ls.mem2reg.bc # runs a mem2reg pass on the bitcode and outputs the transformed bitcode
+	 llc correct.ls.mem2reg.bc -o correct.ls.mem2reg.s # bitcode -> assembly
 	 g++ -o correct.ls.mem2reg correct.ls.mem2reg.s
-	 opt -insert-edge-profiling correct.ls.bc -o correct.profile.bc
-	 llc correct.profile.bc -o correct.profile.s
-	 g++ -o correct.profile correct.profile.s ${LLVMDIR}/Release/lib/profile_rt.so
-	 -./correct.profile > output_profile
-	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-insts -profile-loader -profile-info-file=llvmprof.out -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init < correct.ls.bc > correct.lamp.bc
-	 llc correct.lamp.bc -o correct.lamp.s
-	 g++ -o correct.lamp correct.lamp.s ${LLVMDIR}/Release/lib/profile_rt.so ${PROJDIR}/tools/lamp-profiler/lamp_hooks.o ${PROJDIR}/tools/lamp-profiler/loadstride.cxx
-	 -./correct.lamp > output
-	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -lamp-inst-cnt -lamp-map-loop -lamp-load-profile -profile-loader -profile-info-file=llvmprof.out -projpass correct.ls.bc > correct.prefetch.bc
+	 opt -insert-edge-profiling correct.ls.bc -o correct.profile.bc # inserts instrumentation for edge profiling. instrumentation being code that is run when the binary is executed.
+	 llc correct.profile.bc -o correct.profile.s # prepares the assembly to be compiled
+	 g++ -o correct.profile correct.profile.s ${LLVMDIR}/Release/lib/profile_rt.so # compiles the assembly into binary which will be used to produce edge profiling information
+	 -./correct.profile ${s} > output_profile # executed to produce the edge profiling information
+	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -stride-insts -profile-loader -profile-info-file=llvmprof.out -insert-stride-profiling -insert-stride-init < correct.ls.bc > correct.stride.bc
+	 opt -mem2reg correct.stride.bc -o correct.stride.mem2reg.bc # runs mem2reg pass on the stride bitcode and outputs new modified bitcode
+	 llvm-dis correct.stride.mem2reg.bc -o correct.stride.mem2reg.ll # llvm-dis converts the llvm bitcode file into human-readable llvm assembly language
+	 llc correct.stride.mem2reg.bc -o correct.stride.s # compiles the mem2reg modified bitcode file to assembly
+	 g++ -o correct.stride correct.stride.s ${LLVMDIR}/Release/lib/profile_rt.so ${PROJDIR}/tools/stride-profiler/stride_hooks.o ${PROJDIR}/tools/stride-profiler/loadstride.cxx
+	 -./correct.stride ${s} > output # runs the executable binary of the stride and mem2reg modified code
+	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -stride-inst-cnt -stride-load-profile -profile-loader -profile-info-file=llvmprof.out -projpass correct.ls.bc > correct.prefetch.bc
 	llc correct.prefetch.bc -o correct.prefetch.s
 	llvm-dis correct.prefetch.bc -o correct.prefetch.ll
 	g++ -o correct.prefetch correct.prefetch.s
-	opt -dot-cfg correct.prefetch.bc >& /dev/null
+	opt -dot-cfg correct.prefetch.bc >& /dev/null # produces a dot file for viewing the graphical illustration of the bitcode
 	mv cfg.main.dot cfg.prefetch.dot
 	opt -dot-cfg correct.bc >& /dev/null
 	mv cfg.main.dot cfg.correct.dot
 	rm -f cfg.main.dot
-	opt -mem2reg correct.prefetch.bc -o correct.prefetch.mem2reg.bc
-	llc correct.prefetch.mem2reg.bc -o correct.prefetch.mem2reg.s
-	llvm-dis correct.prefetch.mem2reg.bc -o correct.prefetch.mem2reg.ll
-	g++ -o correct.prefetch.mem2reg correct.prefetch.mem2reg.s
+	opt -mem2reg correct.prefetch.bc -o correct.prefetch.mem2reg.bc # runs mem2reg pass on the bitcode that the prefetch code already modified
+	llc correct.prefetch.mem2reg.bc -o correct.prefetch.mem2reg.s # bitcode -> assembly
+	llvm-dis correct.prefetch.mem2reg.bc -o correct.prefetch.mem2reg.ll # produces human-readable assembly from the bitcode
+	g++ -o correct.prefetch.mem2reg correct.prefetch.mem2reg.s # makes executable from the assembly
 	opt -dot-cfg correct.prefetch.mem2reg.bc >& /dev/null
 	mv cfg.main.dot cfg.prefetch.mem2reg.dot
 	rm -f cfg.main.dot
-
-	-./correct.prefetch.mem2reg > output_prefetch
-	-./correct.ls.mem2reg > output_correct_ls_mem2reg
+	-./correct.prefetch.mem2reg ${s} > output_prefetch
+	-./correct.ls.mem2reg ${s} > output_correct_ls_mem2reg
 	tail output_correct_ls_mem2reg
 	tail output_prefetch
-	
+
 clean:
 	rm -f llvmprof.out
 	rm -f correct_correct output_correct
-	rm -f result.lamp*
+	rm -f result.stride*
 	rm -f correct.bc correct.opt*
-	rm -f output output_prefetch correct.lamp* correct.ls* correct.profile* output_*
+	rm -f output output_prefetch correct.stride* correct.ls* correct.profile* output_*
 	rm -f correct.prefetch*
 	rm -f cfg.*
 
-#	 opt -loop-simplify < simple.bc > simple.ls.bc
-#	 opt -load /y/students/mviscomi/hw1/Debug+Asserts/lib/sample.so -lamp-insts -insert-lamp-profiling -insert-lamp-loop-profiling -insert-lamp-init < simple.ls.bc > simple.lamp.bc
-#	 llc < simple.lamp.bc > simple.lamp.s
-#	 g++ -o simple.lamp.exe simple.lamp.s /y/students/mviscomi/hw1/tools/lamp-profiler/lamp_hooks.o
-#	 -./simple.lamp.exe > output.lamp

@@ -8,6 +8,6 @@ LEVEL=..
 #
 # List all of the subdirectories that we will compile.
 #
-DIRS=lamp-profiler utils
+DIRS=stride-profiler utils
 
 include $(LEVEL)/Makefile.common

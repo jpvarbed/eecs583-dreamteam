@@ -1,3 +1,7 @@
+/*
+  Instrument the program with stride profiling
+*/
+
 #include "llvm/Analysis/ProfileInfo.h"
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/Constants.h"
@@ -9,12 +13,12 @@
 #include "llvm/Target/TargetInstrInfo.h"
 #include "llvm/Target/TargetData.h"
 #include "llvm/Support/Compiler.h"
-#include "LAMPProfiling.h"
+#include "StrideProfiling.h"
 
 #include "llvm/Analysis/LoopInfo.h"
-#include "llvm/Analysis/LoopPass.h"	//TRM 7/21/08
+#include "llvm/Analysis/LoopPass.h"	
 #include "llvm/ADT/SmallVector.h"
-#include "llvm/Analysis/Passes.h"	//TRM 7/21/08
+#include "llvm/Analysis/Passes.h"
 
 #include "llvm/Support/Debug.h"
 #include <iostream>
@@ -61,8 +65,8 @@ unsigned int LdStCallCounter::num_loads = 0;
 unsigned int LdStCallCounter::num_loops = 0;	
 
 static RegisterPass<LdStCallCounter>
-Y("lamp-insts",
-    "Count the number of LAMP Profilable insts");
+Y("stride-insts",
+    "Count the number of Stride Profilable insts");
 
 ModulePass *llvm::createLdStCallCounter() {
   return new LdStCallCounter();
@@ -85,16 +89,14 @@ ModulePass *llvm::createLdStCallCounter() {
           }
         }
       }
-    //DOUT << "Loads/Store/Calls:" << num_loads << " " << num_stores << " " << num_calls << std::endl;
+    
     flag = true;
 
     return false;
   }
 
-// LAMPProfiler instruments loads, stores, and calls.  Target data required to determine
-// data size to be profiled.
 namespace {
-  class LAMPProfiler : public FunctionPass {
+  class StrideProfiler : public FunctionPass {
     bool runOnFunction(Function& F);
     void doStrides();
     bool isLoadDynamic(Instruction *inst);
@@ -118,8 +120,7 @@ namespace {
     static unsigned int load_id; // counts the loads that we are analyzing bro
 
     static char ID;
-    LAMPProfiler() : FunctionPass(ID) 
-    {
+    StrideProfiler() : FunctionPass(ID) {
       //instruction_id = 0;
       ranOnce = false;
       TD = NULL;
@@ -129,20 +130,20 @@ namespace {
   };
 }
 
-char LAMPProfiler::ID = 0;
-unsigned int LAMPProfiler::instruction_id = -1;
-unsigned int LAMPProfiler::load_id = -1;
+char StrideProfiler::ID = 0;
+unsigned int StrideProfiler::instruction_id = -1;
+unsigned int StrideProfiler::load_id = -1;
 
-static RegisterPass<LAMPProfiler>
-X("insert-lamp-profiling",
-    "Insert instrumentation for LAMP profiling");
+static RegisterPass<StrideProfiler>
+X("insert-stride-profiling",
+    "Insert instrumentation for Stride profiling");
 
-FunctionPass *llvm::createLAMPProfilerPass() { return new LAMPProfiler(); }
+FunctionPass *llvm::createStrideProfilerPass() { return new StrideProfiler(); }
 
-void LAMPProfiler::createLampDeclarations(Module* M)
+void StrideProfiler::createLampDeclarations(Module* M)
 {
   StrideProfileFn = M->getOrInsertFunction(
-    "LAMP_StrideProfile",
+    "Stride_StrideProfile",
     llvm::Type::getVoidTy(M->getContext()),
     llvm::Type::getInt32Ty(M->getContext()),
     llvm::Type::getInt64Ty(M->getContext()),
@@ -151,7 +152,7 @@ void LAMPProfiler::createLampDeclarations(Module* M)
   );
 
   StrideProfileClearAddresses = M->getOrInsertFunction(
-    "LAMP_StrideProfile_ClearAddresses",
+    "Stride_StrideProfile_ClearAddresses",
     llvm::Type::getVoidTy(M->getContext()),
     llvm::Type::getInt32Ty(M->getContext()),
     (Type *) 0
@@ -161,7 +162,7 @@ void LAMPProfiler::createLampDeclarations(Module* M)
 vector<Instruction *> loadsToStride;
 map<Instruction *, double> loadToExecCount;
 
-bool LAMPProfiler::isLoadDynamic(Instruction *inst)
+bool StrideProfiler::isLoadDynamic(Instruction *inst)
 {
     Loop *CurLoop = NULL;
     LoopInfo &LI = getAnalysis<LoopInfo>();
@@ -183,7 +184,7 @@ bool LAMPProfiler::isLoadDynamic(Instruction *inst)
     return !CurLoop->hasLoopInvariantOperands(inst);
 }
 
-void LAMPProfiler::doStrides() {
+void StrideProfiler::doStrides() {
   Instruction *I;
   Value *compare;
   BinaryOperator *newNum;
@@ -348,7 +349,7 @@ void LAMPProfiler::doStrides() {
   errs() << "num_profiled is <"<<num_profiled<<"> \n";
 }
 
-bool LAMPProfiler::runOnFunction(Function &F) {
+bool StrideProfiler::runOnFunction(Function &F) {
   if (ranOnce == false) {
     Module* M = F.getParent();
     createLampDeclarations(M);
@@ -390,53 +391,44 @@ bool LAMPProfiler::runOnFunction(Function &F) {
 
 
 
-
-// This class retrieves data from the LdStCallCounter class.  While not explicitly noted for llvm structural
-// reasons, this class does require that insert-lamp-loop-profiling (LAMPLoopProfiler class) run first.  If it
-// fails to run first, the number of loops will be reported as zero.  Initialization pass should be run LAST.
 namespace {
-  class LAMPInit : public ModulePass {
+  class StrideInit : public ModulePass {
     bool runOnModule(Module& M);
 
     public:
     virtual void getAnalysisUsage(AnalysisUsage &AU) const {
       AU.addRequired<LdStCallCounter>();
-      //  AU.addRequired<LAMPLoopProfiler>();  LAMPLoopProfiler MUST run first but we cannot add required due to 
-    }						// LLVM structural issues
+    }
 
     static char ID;
-    LAMPInit() : ModulePass(ID) 
-    { } 
+    StrideInit() : ModulePass(ID) { }
   };
 }
 
-char LAMPInit::ID = 0;
+char StrideInit::ID = 0;
 
-static RegisterPass<LAMPInit>
-V("insert-lamp-init",
-    "Insert initialization for LAMP profiling");
+static RegisterPass<StrideInit>
+V("insert-stride-init", "Insert initialization for Stride profiling");
 
-ModulePass *llvm::createLAMPInitPass() { return new LAMPInit(); }
+ModulePass *llvm::createStrideInitPass() { return new StrideInit(); }
 
-bool LAMPInit::runOnModule(Module& M)
-{
-  for(Module::iterator IF = M.begin(), E = M.end(); IF != E; ++IF)
-  {
+bool StrideInit::runOnModule(Module& M) {
+  for(Module::iterator IF = M.begin(), E = M.end(); IF != E; ++IF) {
     Function& F = *IF;
     if (F.getName() == "main") {
-      const char* FnName = "LAMP_init";
+      const char* FnName = "Stride_init";
 
       LdStCallCounter& lscnts = getAnalysis<LdStCallCounter>();
 
       unsigned int cnt = lscnts.getCountInsts();
       unsigned int lps = lscnts.num_loops;
 
-      //DOUT << "LAMP-- Ld/St/Call Count:" << cnt << " Loop Count:" << lps <<std::endl;
-
       Constant *InitFn = M.getOrInsertFunction(FnName, llvm::Type::getVoidTy(M.getContext()), llvm::Type::getInt32Ty(M.getContext()), llvm::Type::getInt32Ty(M.getContext()), llvm::Type::getInt64Ty(M.getContext()), llvm::Type::getInt64Ty(M.getContext()),(Type *)0);
       BasicBlock& entry = F.getEntryBlock();
       BasicBlock::iterator InsertPos = entry.begin();
-      while (isa<AllocaInst>(InsertPos)) ++InsertPos;
+      while (isa<AllocaInst>(InsertPos)) {
+        ++InsertPos;
+      }
 
       std::vector<Value*> Args(4);
       Args[0] = ConstantInt::get(llvm::Type::getInt32Ty(M.getContext()), cnt, false);
@@ -451,126 +443,3 @@ bool LAMPInit::runOnModule(Module& M)
   return false;
 }
 
-// Loop instrumentation class instruments loops with invocation, iteration beginning, iteration ending
-// and loop exiting calls.  It also counts the number of loops for use by LAMPProfiler initilization.
-namespace {
-  class LAMPLoopProfiler : public LoopPass {
-    bool runOnLoop (Loop *Lp, LPPassManager &LPM);
-
-    virtual void getAnalysisUsage(AnalysisUsage &AU) const {
-      AU.addRequiredTransitive<LdStCallCounter>();
-      //AU.addRequired<LAMPProfiler>();	For reasons incomprehensible to us, this is not permissible
-    }
-
-    unsigned int numLoops;			// numLoops for LAMPProfiler initilization
-
-    public:
-    bool doInitialization(Loop *Lp, LPPassManager &LPM) { return false; }
-    static char ID;
-    static bool IDInitFlag;
-    static unsigned int loop_id;		// ids will be progressive starting after instruction ids
-    LAMPLoopProfiler() : LoopPass(ID) 
-    {  
-      numLoops = 0;
-    }	 
-    unsigned int getNumLoops(){ return numLoops;}
-  };
-}
-
-char LAMPLoopProfiler::ID = 0;
-bool LAMPLoopProfiler::IDInitFlag = false;
-unsigned int LAMPLoopProfiler::loop_id = 0;
-
-static RegisterPass<LAMPLoopProfiler>
-W("insert-lamp-loop-profiling",
-    "Insert instrumentation for LAMP loop profiling");
-
-LoopPass *llvm::createLAMPLoopProfilerPass() { return new LAMPLoopProfiler(); }
-
-
-bool LAMPLoopProfiler::runOnLoop(Loop *Lp, LPPassManager &LPM) {
-  BasicBlock *preHeader;
-  BasicBlock *header;
-  BasicBlock *latch;
-
-  LdStCallCounter& lscnts = getAnalysis<LdStCallCounter>();
-
-  if(!IDInitFlag)
-  {
-    loop_id = lscnts.getCountInsts()-1;	// first id will begin after instruction ids
-    IDInitFlag = true;
-  }
-
-  SmallVector<BasicBlock*, 8> exitBlocks;			// assuming max 8 exit blocks.  Is this wise?
-  // TRM 7/24/08 removed exiting blocks instrumentation
-  // in favor of placing iter end prior loop exit
-  header = Lp->getHeader();
-  preHeader = Lp->getLoopPreheader();
-  latch = Lp->getLoopLatch();
-
-  Lp->getExitBlocks(exitBlocks);
-
-  Module *M = (header->getParent())->getParent();
-
-  numLoops++;
-
-  lscnts.num_loops = numLoops;
-
-  // insert invocation function at end of preheader (called once prior to loop)
-  const char* InvocName = "LAMP_loop_invocation";
-  Constant *InvocFn = M->getOrInsertFunction(InvocName, llvm::Type::getVoidTy(M->getContext()), llvm::Type::getInt32Ty(M->getContext()), (Type *)0);
-  std::vector<Value*> Args(1);
-  Args[0] = ConstantInt::get(llvm::Type::getInt32Ty(M->getContext()), ++loop_id);
-
-
-  if (!preHeader->empty())
-
-    CallInst::Create(InvocFn, Args.begin(), Args.end(), "", (preHeader->getTerminator()));
-  else
-    CallInst::Create(InvocFn, Args.begin(), Args.end(), "", (preHeader));
-
-
-  // insert iteration begin function at beginning of header (called each loop)
-  const char* IterBeginName = "LAMP_loop_iteration_begin";
-  Constant *IterBeginFn = M->getOrInsertFunction(IterBeginName, llvm::Type::getVoidTy(M->getContext()), (Type *)0);	
-
-  // find insertion point (after PHI nodes) -KF 11/18/2008
-  for (BasicBlock::iterator ii = header->begin(), ie = header->end(); ii != ie; ++ii) {
-    if (!isa<PHINode>(ii)) {
-      CallInst::Create(IterBeginFn, "", ii);
-      break;
-    }
-  }
-
-  // insert iteration at cannonical backedge.  exiting block insertions removed in favor of exit block
-  const char* IterEndName = "LAMP_loop_iteration_end";
-  Constant *IterEndFn = M->getOrInsertFunction(IterEndName, llvm::Type::getVoidTy(M->getContext()), (Type *)0);	
-
-  // cannonical backedge
-  if (!latch->empty())
-    CallInst::Create(IterEndFn, "", (latch->getTerminator()));
-  else
-    CallInst::Create(IterEndFn, "", (latch));
-
-
-  // insert loop end at beginning of exit blocks
-  const char* LoopEndName = "LAMP_loop_exit";
-  Constant *LoopEndFn = M->getOrInsertFunction(LoopEndName, llvm::Type::getVoidTy(M->getContext()), (Type *)0);	
-
-  set <BasicBlock*> BBSet; 
-  BBSet.clear();
-  for(unsigned int i = 0; i != exitBlocks.size(); i++){		
-    // this ordering places iteration end before loop exit
-    // make sure not inserting the same exit block more than once for a loop -PC 2/5/2009
-    if (BBSet.find(exitBlocks[i])!=BBSet.end()) continue;
-    BBSet.insert(exitBlocks[i]);
-    // find insertion point (after PHI nodes) -PC 2/2/2009  -TODO: there is some function to do this.
-    BasicBlock::iterator ii =  exitBlocks[i]->begin();
-    while (isa<PHINode>(ii)) { ii++; }
-    CallInst::Create(IterEndFn, "", ii);	// iter end placed before exit call
-    CallInst::Create(LoopEndFn, "", ii);	// loop exiting
-  }
-
-  //DOUT << "Num Loops Processed: " << numLoops << "  Loop ID: " << loop_id << std::endl;
-  return true;	
-}

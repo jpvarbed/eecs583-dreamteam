@@ -8,7 +8,7 @@
    Efficient Discovery of Regular Stride Patterns in Irregular
    Programs and Its Use in Compiler Prefetching
    by Youfeng Wu
-   */
+*/
 
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Constants.h"
@@ -33,7 +33,7 @@
 #include "llvm/Transforms/Utils/BasicBlockUtils.h"
 #include "llvm/ADT/Statistic.h"
 #include "profilefeedback.h"
-#include "LAMPLoadProfile.h"
+#include "StrideLoadProfile.h"
 #include <vector>
 #include <algorithm>
 #include <cmath>
@@ -73,7 +73,7 @@ namespace {
         AU.addRequired<LoopInfo>();
         AU.addRequired<ProfileInfo>();
         AU.addRequired<AliasAnalysis>();
-        AU.addRequired<LAMPLoadProfile>();
+        AU.addRequired<StrideLoadProfile>();
       }
 
     private:
@@ -81,7 +81,7 @@ namespace {
       LoopInfo *LI;
       DominatorTree *DT;
       ProfileInfo *PI;
-      LAMPLoadProfile *LP;
+      StrideLoadProfile *LP;
 
       typedef map<const Loop * const, unsigned int> InstsPerLoopMap;
       // tracks number of instructions per loop body
@@ -140,7 +140,7 @@ char StridePrefetch::ID = 0;
 
     LI = &getAnalysis<LoopInfo>();
     PI = &getAnalysis<ProfileInfo>();
-    LP = &getAnalysis<LAMPLoadProfile>();
+    LP = &getAnalysis<StrideLoadProfile>();
     DT = &getAnalysis<DominatorTree>();
 
     Preheader = L->getLoopPreheader();
