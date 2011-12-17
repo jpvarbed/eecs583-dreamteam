@@ -2,6 +2,6 @@
 - compile with latex to check any errors
 - compile with pdflatex instead of latex if you want it to directly make a pdf
 - enter all the reference that you get from papers in paper.bib
-- if changes are made to the bibliography run: pdflatex paper; bibtex paper; pdflatex paper; pdflatex paper
+- if changes are made to the bibliography run: pdflatex paper; bibtex paper; pdflatex paper; pdflatex paper OR just ./make.sh takes care of all the typing for you
   - the reason for all the pdflatex calls is to make sure it links properly
 

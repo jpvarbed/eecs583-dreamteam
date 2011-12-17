@@ -1,24 +1,33 @@
 \documentclass[11pt]{article}
 \usepackage{cite}
+\usepackage{url}
 
 \title{Discovery and Use Optimizations for Regular Stride Patterns in Compiler Prefetching}
 
 \author{Patryk Mastela, Jason Varbedian, Matt Viscomi \\
-\small \texttt \{pmastela, jpvarbed, mviscomi\}@umich.edu}
+  \small {\texttt {\{pmastela, jpvarbed, mviscomi\}@umich.edu}}}
 
 \date{\today}
 
 \begin{document}
   \maketitle
+
   \begin{abstract}
-    TODO abstract
+    - prefetching is hard
+    - we reimpliment the profiling and prefetching
+    - we also impliment some additional optimizations
+    - these optimizations produce some kind of performance gains
+    - if the gains are stable across then we can suggest this being used in a production compiler (this is word for word from ) ~\cite{WuEtAl2002}
   \end{abstract}
   
   \section{Introduction}
+  Irregular programs contain many irregular data references, e.g., pointer-chasing code that manipulates dyanmic datat structures~\cite{WuEtAl2002}. Because of the irregularity of data references it is hard for both the compiler and hardware to anticipate the future address of a memory location~\cite{luk99}~\cite{roth98}. Others including Collins el al~\cite{collins01}, Stoutchinin et al~\cite{stoutchinin01}, and Wu et al~\cite{WuEtAl2002} have also taken
+  notice that important loads in benchmark suite programs, e.g., {\textit 181.mcf} and {\textit 197.parser} in CPU2000, have near-constant strides. 
   \subsection{this is an intro subsection}
   
   \section{Experiments}
-  tada citationg ~\cite{Wu2002}
+  tada citationg ~\cite{Wu2002} ~\cite{WuEtAl2002}
+  ~\cite{metcalf93} ~\cite{prefetchsupportwebsite} ~\cite{dundas97} ~\cite{mowry98} ~\cite{luk99}
   \subsection{this is an intro subsection}
 
   \section{Conclusion}
@@ -26,6 +35,7 @@
   
   TODO hardware prefetch 
       its hard to show improvement. a lot o the easy prefetching is hard to do because if we prefetch too far than we're screwed and if too close we're screwed
+
   \bibliography{paper}{}
   \bibliographystyle{plain}
 \end{document}
