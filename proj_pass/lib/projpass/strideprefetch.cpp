@@ -316,7 +316,7 @@ BinaryOperator* StridePrefetch::scratchAndSub(Instruction *inst) {
       scrInt,
       "stride",
       inst
-      );
+    );
   return subPtr;
 }
 
@@ -406,7 +406,7 @@ void StridePrefetch::insertWSST(Instruction *inst, const double& K) {
     inst, 
     ICmpInst::ICMP_EQ,
     AddrToInt,
-    ConstantInt::get(dyn_cast<LoadInst>(inst)->getPointerOperand()->getType(), profiled_stride), 
+    ConstantInt::get(llvm::Type::getInt32Ty(context), profiled_stride), 
     "cmpweak"
   );
   BasicBlock* homeBB = inst->getParent();
