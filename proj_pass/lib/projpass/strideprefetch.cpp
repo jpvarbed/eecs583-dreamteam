@@ -444,7 +444,7 @@ unsigned int StridePrefetch::getLoopInstructionCount(const Loop * const loop) {
   double loop_exec_count = PI->getExecutionCount(loop->getHeader());
   for (LoopBase<BasicBlock, Loop>::block_iterator biter = loop->block_begin(), end = loop->block_end(); 
       biter != end; ++biter) {
-    assert(PI->getExecutionCount(*biter) > 0 
+    assert(PI->getExecutionCount(*biter) >= 0 
       && "Execution count shouldn't be negative");
 
     unsigned int block_exec_count = PI->getExecutionCount(*biter);
