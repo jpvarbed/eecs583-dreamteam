@@ -9,9 +9,9 @@ import time
 import string
 import operator
 
-COMMAND = 'make s=300'
-MAX_TRIALS = 3
-INITIAL_K = 100
+COMMAND = 'make s=10'
+MAX_TRIALS = 1
+INITIAL_K = 10
 
 # used for finding the optimal k value
 K_PARTITIONS = 5
@@ -21,8 +21,15 @@ PROJ_PATH = '' # will be initialized by the user
 PREFETCH_FILE = '/lib/projpass/strideprefetch.cpp'
 
 RES_FILE = None
-
 class Result:
+  """
+  Result stores the important details from a run,
+
+  i.e., K, the prefetching distance; time to complete without prefetching,
+  and time with prefetchin
+
+  """
+
   def __init__(self, k, unmodified_time, modified_time):
     self.k = k
     self.unmodified_time = string.atof(unmodified_time)
@@ -35,6 +42,9 @@ class Result:
         '%.6f' % self.performance
 
 class Results:
+  """
+  Keeps track of the Results instances. Keeps track of the average performance
+  """
   def __init__(self):
     self.results = {}
     self.avg_performance = {}
@@ -47,6 +57,9 @@ class Results:
 
   # parse the input and add a new Result to results
   def add(self, k, result):
+    """
+    Records result and K
+    """
     print '---- Add ' + str(result)
     if k not in self.results:
       self.results[k] = []
@@ -61,32 +74,35 @@ class Results:
 
   # returns the average performance for k
   def get_avg_perf(self, k):
+    """
+    Returns the average performance for results with K set to k
+    """
     print '---- In get_avg_perf'
 
     return self.avg_performance[k].performance
 
-    avg_perf = 0
-    for result in self.results[k]:
-      print '----- ' + str(result)
-      avg_perf = avg_perf + result.performance
-    avg_perf = avg_perf / len(self.results[k])
-
-    return avg_perf
-
   def get_performance_rankings(self):
+    """
+    Returns a sorted list of the results' performance
+    """
     sorted_list = []
     for value in self.avg_performance.values():
       print '---- Appending ' + str(value)
       sorted_list.append(value)
 
-    for elt in sorted_list:
-      print elt
-
     sorted_list.sort(key = operator.attrgetter('performance'), reverse = True)
     return sorted_list
 
 class Parser:
+  """
+  Extracts the important content regarding results such as k and the times
+  with and without prefetching
+  """
   def get_result(self, k, output):
+    """
+    Extracts the time it took to run with and without prefetching
+    Returns a Result with the information
+    """
     unmodified_time = None
     modified_time = None
     for line in output:
@@ -101,23 +117,10 @@ class Parser:
 
     return Result(k, unmodified_time, modified_time)
 
-def bin_search(a, x, lo = 1, hi = None):
-  if hi is None:
-    hi = len(a)
-  while lo < hi:
-    mid = (lo + hi)
-    midval = a[mid]
-
-    if midval < x:
-      lo = mid + 1
-    elif midval > x:
-      hi = mid
-    else:
-      return mid
-  return -1
-
-# makes a new range that consists of K_PARTITIONS points
 def make_range(lo, hi):
+  """
+  Returns a new ranged based on hi and lo and K_PARTITIONS.
+  """
   r = []
   partition = (int) ((hi - lo) / K_PARTITIONS)
   if partition is not 0:
@@ -129,6 +132,10 @@ def make_range(lo, hi):
 
 # find the best range with
 def get_best_range_begin(k_range, results):
+  """
+  Optimization algorithm that selects a range that saw most significant
+  performance gain
+  """
   range_start = None
   for i in range(len(k_range) - CONSECUTIVE + 1):
     print '--- Getting performance for ' + str(k_range[i]) +\
@@ -143,11 +150,13 @@ def get_best_range_begin(k_range, results):
 
   return range_start
 
+def bin_find_optimal_k(lo = 0, hi = None):
+  """
 # split the range to 5 points to examine
 # run int then on those 5 points
 # pick the 3 that have greatest consecutive perf
 # continue doing this until
-def bin_find_optimal_k(lo = 0, hi = None):
+  """
   results = Results()
   if hi is None:
     hi = INITIAL_K
@@ -165,6 +174,7 @@ def bin_find_optimal_k(lo = 0, hi = None):
     hi = k_range[range_begin + CONSECUTIVE - 1]
 
   slist = results.get_performance_rankings()
+  print 'after sorting'
   print '\n'.join(map(str, slist))
 
   return hi
@@ -182,7 +192,6 @@ def modify_file(cur_k):
   f.write(text)
   f.truncate()
   f.seek(0)
-  print f.read()
   f.flush()
   f.close()
 
