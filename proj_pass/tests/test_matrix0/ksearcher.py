@@ -9,6 +9,8 @@ import sys
 import string
 import time
 
+
+PROFILED = False
 MSIZE = '300'
 COMMAND = 'make s=' + MSIZE
 MAX_TRIALS = 3
@@ -207,21 +209,34 @@ def calc_perf(k, results):
   print '-- Finding optimal K'
   modify_file(k)
   os.chdir(PROJ_PATH)
+  # need to remake this every time because of the modified K value
   print 'want to be in ' + PROJ_PATH + ' is in ' + os.getcwd()
   subprocess.call('./domake', shell=True)
   print 'tried do making ' + os.getcwd()
 
   os.chdir(PROJ_PATH + '/tests/test_matrix0')
-  cmd = COMMAND
 
   parser = Parser()
   # loop max trials times making sure that a negative number was reported
   # when in actuality the performance was better
   for i in range(MAX_TRIALS):
+    # profiling only needs to happen once (it's quite an expensive call)
+    global PROFILED
+    if PROFILED is False:
+      cmd = COMMAND + ' profile'
+      subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, \
+          stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
+      PROFILED = True
+
+    assert PROFILED is True
+
+    cmd = COMMAND + ' prefetch'
     print '--- Executing "' + cmd + '" with K = ' + str(k)
     proc = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, \
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
     result = parser.get_result(k, proc.stdout)
+
+
     print '---- Adding result ' + str(result)
     results.add(k, result)
     print '---- about to assert ' + (str(len(results[k])))
@@ -250,6 +265,7 @@ if __name__ == '__main__':
       print 'Enter the path to your proj_pass directory.'
       sys.exit()
 
+    PROFILED = False
     PROJ_PATH = sys.argv[1]
     PREFETCH_FILE = PROJ_PATH + PREFETCH_FILE
     ORIG_PREFETCH_FILE = PREFETCH_FILE + '.orig'
