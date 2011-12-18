@@ -222,7 +222,8 @@ void StridePrefetch::actuallyInsertPrefetch(loadInfo *load_info,
     (Type *) 0
   );
 
-  IntToPtrInst *newAddr = new IntToPtrInst(address, llvm::Type::getInt8PtrTy(context), "inttoptr", before);
+  IntToPtrInst *newAddr = new IntToPtrInst(
+    address, llvm::Type::getInt8PtrTy(context), "inttoptr", before);
 
   vector<Value*> Args(3);
   Args[0] = newAddr; 
@@ -326,6 +327,7 @@ void StridePrefetch::insertPrefetch(Instruction *inst, const double& K, BinaryOp
 
   BinaryOperator *addition;
   Value *loadAddr = dyn_cast<LoadInst>(inst)->getPointerOperand();
+  
   if (before == NULL) {
         before = inst;
   }
@@ -371,8 +373,9 @@ void StridePrefetch::insertPrefetch(Instruction *inst, const double& K, BinaryOp
         shiftResult,
         "addition",
         before
-        );
+      );
   }
+
   actuallyInsertPrefetch(getInfo(inst), before, addition, 0);
 }
 
@@ -410,10 +413,10 @@ void StridePrefetch::insertWSST(Instruction *inst, const double& K) {
     ConstantInt::get(llvm::Type::getInt32Ty(context), profiled_stride), 
     "cmpweak"
   );
+  
   BasicBlock* homeBB = inst->getParent();
   BasicBlock* prefetchBB = SplitBlock(homeBB, inst, this);
-  BasicBlock::iterator ITER = prefetchBB->begin();
-  BasicBlock* restBB = SplitBlock(prefetchBB, inst,this);
+  BasicBlock* restBB = SplitBlock(prefetchBB, inst, this);
 
   //insert branch
   //
