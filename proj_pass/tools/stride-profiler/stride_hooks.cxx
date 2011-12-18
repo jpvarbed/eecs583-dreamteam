@@ -87,7 +87,7 @@ void Stride_print_StrideProfile(ofstream &stream) {
     stream << load_id << " ";
     stream << loadStride->getNumberUniqueStrides() << " ";
     stream << loadStride->getStrideExecCount() << " ";
-    stream << loadStride->getStrideZeroCount() << " ";
+    stream << loadStride->getStrideZeroDifferenceCount() << " ";
     stream << loadStride->getTopStrideValue()->first << " ";
     
     vector< pair<long, long> > *topStrides = loadStride->getTopStrideValues();
