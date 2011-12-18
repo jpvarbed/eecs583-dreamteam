@@ -21,6 +21,7 @@ LoadStride::LoadStride(uint32_t load_id, int32_t exec_count) {
   strideZeroCount = 0;
   strideZeroDifferenceCount = 0;
   topStrideHolder = make_pair(-1, -1);
+  lastAddress = -1;
 
   cout << "looking at load_id: "<<load_id<<"\n";
   //cout << "exec_count <" << exec_count << "> " << "profile <" << profileN << "> skip<" << skipN << ">\n";
@@ -89,14 +90,14 @@ void LoadStride::updateTopStrideDifferenceValues(long value) {
 }
 
 void LoadStride::addAddress(uint64_t addr) {
-  if (addresses.size() == 0) {
-    addresses.push_back(addr);
+  if (lastAddress == -1) {
+    lastAddress = addr;
     return;
   }
   
-  unsigned long last_address = addresses.back();
-  addresses.push_back(addr);
-  
+  unsigned long last_address = lastAddress;
+  lastAddress = addr;
+
   long stride = addr - last_address;
   if (stride == 0 || isSameValue(addr, last_address)) {
     strideZeroCount++;

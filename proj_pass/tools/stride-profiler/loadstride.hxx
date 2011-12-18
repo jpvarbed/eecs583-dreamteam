@@ -47,7 +47,7 @@ class LoadStride {
     }
 
     void clearAddresses() {
-      addresses.clear();
+      lastAddress = -1;
     }
 
     bool isSameValue(long value1, long value2) {
@@ -61,12 +61,8 @@ class LoadStride {
 
     uint32_t loadID;
     uint32_t executionCount;
-    //unsigned int number_skipped,
-    //             number_profiled,
-    //             skipN,
-    //             profileN;
+    long lastAddress;
 
-    vector<unsigned long> addresses;
     vector<long> strideValues;
     vector<long> strideDifferences;
     map<long, long> strideValuesToCount;
