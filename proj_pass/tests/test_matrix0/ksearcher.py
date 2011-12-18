@@ -1,17 +1,18 @@
 #!/usr/bin/python
 
-import sys
+import operator
 import os
 import re
-import subprocess
 import shutil
-import time
+import subprocess
+import sys
 import string
-import operator
+import time
 
-COMMAND = 'make s=500'
-MAX_TRIALS = 5
-INITIAL_K = 100
+MSIZE = '300'
+COMMAND = 'make s=' + MSIZE
+MAX_TRIALS = 3
+INITIAL_K = 50
 
 # used for finding the optimal k value
 K_PARTITIONS = 5
@@ -78,8 +79,6 @@ class Results:
     """
     Returns the average performance for results with K set to k
     """
-    print '---- In get_avg_perf'
-
     return self.avg_performance[k].performance
 
   def get_performance_rankings(self):
@@ -125,19 +124,19 @@ def make_range(lo, hi):
   r = []
   partition = (int) ((hi - lo) / K_PARTITIONS)
   if partition is not 0:
-    for i in range(lo, hi+1):
-      if i % partition is 0:
-        r.append(i + 1) # +1 because low could be 0 and we don't want that
+    for i in range(lo, hi+1, partition):
+        r.append(i) # +1 because low could be 0 and we don't want that
 
+  print ','.join(map(str,r))
   return r
 
-# find the best range with
 def get_best_range_begin(k_range, results):
   """
   Optimization algorithm that selects a range that saw most significant
   performance gain
   """
   range_start = None
+  max_perf = -sys.maxint-1 # the minimum value
   for i in range(len(k_range) - CONSECUTIVE + 1):
     print '--- Getting performance for ' + str(k_range[i]) +\
           ' ' + str(k_range[i+1]) + ' ' + str(k_range[i+2])
@@ -146,17 +145,19 @@ def get_best_range_begin(k_range, results):
     cand_perf = results.get_avg_perf(k_range[i]) +\
                 results.get_avg_perf(k_range[i+1]) +\
                 results.get_avg_perf(k_range[i+2])
-    if range_start is None or cand_perf > range_start:
+    print '--- Cand is ' + str(cand_perf) + ' Max is ' + str(max_perf)
+    if cand_perf > max_perf:
+      max_perf = cand_perf
       range_start = i
+  print '0000000000000000000000000000000000000000000'
+  print '---- range_start is ' + str(range_start)
 
   return range_start
 
 def bin_find_optimal_k(lo = 0, hi = None):
   """
-# split the range to 5 points to examine
-# run int then on those 5 points
-# pick the 3 that have greatest consecutive perf
-# continue doing this until
+  Splits the range into K_PARTITIONS
+  Finds the optimal K between lo and hi
   """
   results = Results()
   if hi is None:
@@ -176,7 +177,7 @@ def bin_find_optimal_k(lo = 0, hi = None):
 
   # save the rankings to a file
   slist = results.get_performance_rankings()
-  f = open('result' + str(int(time.time())) + '.txt', 'w')
+  f = open('result' + str(int(time.time())) + '-' + MSIZE + '.txt', 'w')
   f.write('K no_pref pref perf\n')
   f.write('\n'.join(map(str, slist)))
   f.close()
@@ -225,7 +226,7 @@ def calc_perf(k, results):
     results.add(k, result)
     print '---- about to assert ' + (str(len(results[k])))
     print '---- done asserting and about to write '
-    RES_FILE.write(time.ctime(time.time()) + '\t' + str(k) + '\t' +
+    RES_FILE.write(time.ctime(time.time()) + '\t' + str(k) + '\t' + MSIZE +'\t' +
         '%.6f' % result.unmodified_time + '\t' +
         '%.6f' % result.modified_time + '\t' +
         '%.6f' % result.performance + '\n')
@@ -239,7 +240,7 @@ if __name__ == '__main__':
   res_file_name = 'results.txt'
   if not os.path.exists(res_file_name):
     RES_FILE = open(res_file_name, 'a')
-    RES_FILE.write('Timestamp\t\t\tk\tNo Prefetch\tPrefetch\tPerformance (+/-)\n')
+    RES_FILE.write('Timestamp\t\t\tk\tsize\tNo Prefetch\tPrefetch\tPerformance (+/-)\n')
   else:
     RES_FILE = open(res_file_name, 'a')
 
