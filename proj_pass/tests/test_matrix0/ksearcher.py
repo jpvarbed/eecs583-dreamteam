@@ -9,9 +9,9 @@ import time
 import string
 import operator
 
-COMMAND = 'make s=10'
-MAX_TRIALS = 1
-INITIAL_K = 10
+COMMAND = 'make s=400'
+MAX_TRIALS = 5
+INITIAL_K = 100
 
 # used for finding the optimal k value
 K_PARTITIONS = 5
@@ -19,8 +19,9 @@ CONSECUTIVE = 3
 
 PROJ_PATH = '' # will be initialized by the user
 PREFETCH_FILE = '/lib/projpass/strideprefetch.cpp'
-
+ORIG_PREFETCH_FILE = ''
 RES_FILE = None
+
 class Result:
   """
   Result stores the important details from a run,
@@ -110,10 +111,10 @@ class Parser:
       if time_spent is None:
         continue
 
-      if modified_time is None:
-        modified_time = time_spent.group(1)
-      else:
+      if unmodified_time is None:
         unmodified_time = time_spent.group(1)
+      else:
+        modified_time = time_spent.group(1)
 
     return Result(k, unmodified_time, modified_time)
 
@@ -173,38 +174,41 @@ def bin_find_optimal_k(lo = 0, hi = None):
     lo = k_range[range_begin]
     hi = k_range[range_begin + CONSECUTIVE - 1]
 
+  # save the rankings to a file
   slist = results.get_performance_rankings()
-  print 'after sorting'
-  print '\n'.join(map(str, slist))
+  f = open('result' + str(int(time.time())) + '.txt', 'w')
+  f.write('K no_pref pref perf\n')
+  f.write('\n'.join(map(str, slist)))
+  f.close()
 
   return hi
 
 def modify_file(cur_k):
+  """
+  Changes the K value in the PREFETCH_FILE
+  """
   print '--- Modifying the file'
-  assert os.path.exists(PREFETCH_FILE) == True
-
-  f = open(PREFETCH_FILE, 'r+')
-  text = f.read()
-  # couldn't get it to work with this way
-  #text = re.sub(r'^\s', 'K = ' + str(cur_k) + ';', text)
+  assert os.path.exists(ORIG_PREFETCH_FILE) == True
+  rf = open(ORIG_PREFETCH_FILE, 'r')
+  text = rf.read()
+  rf.close()
+  assert re.search('CHANGE_K_FLAG', text) is not None
+  text = re.sub('//#define K_SEARCH', '#define K_SEARCH', text)
   text = re.sub('CHANGE_K_FLAG', str(cur_k), text)
-  f.seek(0)
+  f = open(PREFETCH_FILE, 'w')
   f.write(text)
-  f.truncate()
-  f.seek(0)
-  f.flush()
   f.close()
+  assert f.closed is True
+  print '--- Done modifying the file'
 
 # calculates the performance with the new k
 def calc_perf(k, results):
   print '-- Finding optimal K'
   modify_file(k)
-
   os.chdir(PROJ_PATH)
-  f = open(PREFETCH_FILE, 'r')
-  print f.read()
-  f.close()
-  subprocess.call('./domake', shell=True)
+  print 'want to be in ' + PROJ_PATH + ' is in ' + os.getcwd()
+  subprocess.check_call('./domake', shell=True)
+  print 'tried do making ' + os.getcwd()
 
   os.chdir(PROJ_PATH + '/tests/test_matrix0')
   cmd = COMMAND
@@ -216,7 +220,6 @@ def calc_perf(k, results):
     print '--- Executing "' + cmd + '" with K = ' + str(k)
     proc = subprocess.Popen(cmd, shell=True, stdin=subprocess.PIPE, \
         stdout=subprocess.PIPE, stderr=subprocess.STDOUT, close_fds=True)
-    #result = proc.communicate()[0]
     result = parser.get_result(k, proc.stdout)
     print '---- Adding result ' + str(result)
     results.add(k, result)
@@ -232,6 +235,7 @@ def calc_perf(k, results):
   return results.get_avg_perf(k)
 
 if __name__ == '__main__':
+  print '- Running KSearcher'
   res_file_name = 'results.txt'
   if not os.path.exists(res_file_name):
     RES_FILE = open(res_file_name, 'a')
@@ -247,13 +251,14 @@ if __name__ == '__main__':
 
     PROJ_PATH = sys.argv[1]
     PREFETCH_FILE = PROJ_PATH + PREFETCH_FILE
-    print 'The file that will be modified is ' + PREFETCH_FILE
-    shutil.copyfile(PREFETCH_FILE, PREFETCH_FILE + '.bak')
+    ORIG_PREFETCH_FILE = PREFETCH_FILE + '.orig'
+    print '-The file that will be modified is ' + PREFETCH_FILE
+    shutil.copyfile(PREFETCH_FILE, ORIG_PREFETCH_FILE)
     bin_find_optimal_k()
   finally:
     # get the file to its original shape
     print '-- In the finally clause'
     if len(PROJ_PATH) != 0:
-      shutil.copyfile(PREFETCH_FILE + '.bak', PREFETCH_FILE)
+      shutil.copyfile(ORIG_PREFETCH_FILE, PREFETCH_FILE)
     RES_FILE.close()
 
