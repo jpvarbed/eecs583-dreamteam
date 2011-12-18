@@ -9,7 +9,7 @@ import time
 import string
 import operator
 
-COMMAND = 'make s=400'
+COMMAND = 'make s=500'
 MAX_TRIALS = 5
 INITIAL_K = 100
 
@@ -207,7 +207,7 @@ def calc_perf(k, results):
   modify_file(k)
   os.chdir(PROJ_PATH)
   print 'want to be in ' + PROJ_PATH + ' is in ' + os.getcwd()
-  subprocess.check_call('./domake', shell=True)
+  subprocess.call('./domake', shell=True)
   print 'tried do making ' + os.getcwd()
 
   os.chdir(PROJ_PATH + '/tests/test_matrix0')
