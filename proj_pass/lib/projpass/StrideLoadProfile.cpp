@@ -34,53 +34,6 @@ inline unsigned int str_to_int(std::string& s)
   return t;	
 }
 
-namespace {
-  class LdStCallCounter : public ModulePass {
-    public:
-      static char ID;
-      static bool flag;
-      bool runOnModule(Module &M);
-      static unsigned int num_loads;
-
-      //    static unsigned int num_loops;
-      LdStCallCounter(): ModulePass(ID) {}
-      
-      unsigned int getCountInsts() { return num_loads; }
-  };
-}
-
-char LdStCallCounter::ID = 0;
-
-// flag to ensure we only count once
-bool LdStCallCounter::flag = false;
-
-// only want these counted once and only the first time (not after other instrumentation)
-unsigned int LdStCallCounter::num_loads = 0;	
-
-static RegisterPass<LdStCallCounter>
-A("stride-inst-cnt",
-    "Count the number of Stride Profilable insts");
-
-  bool LdStCallCounter::runOnModule(Module &M) {
-    if (flag == true)	{ // if we have counted already -- structure of llvm means this could be called many times
-      return false;
-    }
-    // for all functions in module
-    for (Module::iterator I = M.begin(), E = M.end(); I != E; ++I)
-      if (!I->isDeclaration()) {			// for all blocks in the function
-        for (Function::iterator BBB = I->begin(), BBE = I->end(); BBB != BBE; ++BBB) {		// for all instructions in a block
-          for (BasicBlock::iterator IB = BBB->begin(), IE = BBB->end(); IB != IE; IB++) {
-            if (isa<LoadInst>(IB)) {		// count loads, stores, calls
-              num_loads++;
-            }
-          }
-        }
-      }
-    flag = true;
-
-    return false;
-  }
-
 void StrideLoadProfile::getAnalysisUsage(AnalysisUsage &AU) const {
   AU.setPreservesAll();
 }
