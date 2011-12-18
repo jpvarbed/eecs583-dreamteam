@@ -21,9 +21,9 @@ default:
 	 opt -mem2reg correct.stride.bc -o correct.stride.mem2reg.bc # runs mem2reg pass on the stride bitcode and outputs new modified bitcode
 	 llvm-dis correct.stride.mem2reg.bc -o correct.stride.mem2reg.ll # llvm-dis converts the llvm bitcode file into human-readable llvm assembly language
 	 llc correct.stride.mem2reg.bc -o correct.stride.s # compiles the mem2reg modified bitcode file to assembly
-	 g++ -o correct.stride correct.stride.s ${LLVMDIR}/Release/lib/profile_rt.so ${PROJDIR}/tools/stride-profiler/stride_hooks.o ${PROJDIR}/tools/stride-profiler/loadstride.cxx
+	 g++ -g -o correct.stride correct.stride.s ${LLVMDIR}/Release/lib/profile_rt.so ${PROJDIR}/tools/stride-profiler/stride_hooks.o ${PROJDIR}/tools/stride-profiler/loadstride.cxx
 	 -./correct.stride ${s} > output # runs the executable binary of the stride and mem2reg modified code
-	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -stride-inst-cnt -stride-load-profile -profile-loader -profile-info-file=llvmprof.out -projpass correct.ls.bc > correct.prefetch.bc
+	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -stride-load-profile -profile-loader -profile-info-file=llvmprof.out -projpass correct.ls.bc > correct.prefetch.bc
 	llc correct.prefetch.bc -o correct.prefetch.s
 	llvm-dis correct.prefetch.bc -o correct.prefetch.ll
 	g++ -o correct.prefetch correct.prefetch.s

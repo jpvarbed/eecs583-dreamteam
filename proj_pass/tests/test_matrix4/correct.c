@@ -12,7 +12,7 @@ struct timeval t_start, t_end;
 double t_diff;
 
 
-  int i, j, k;
+  int i, j, k, l;
 int main(int argc, char* argv[]) {
   if (argc < 2) {
     printf("Put a fucking size!\n");
@@ -21,28 +21,17 @@ int main(int argc, char* argv[]) {
   int h = 0;
   int SIZE = atoi(argv[1]);
   printf("size is %d\n", SIZE);
-  /*int A[SIZE][SIZE];
-  int B[SIZE][SIZE];
-  */
+  
   int **A = NULL, **B = NULL;
   A = (int**)malloc(SIZE * sizeof(int*));
   B = (int**)malloc(SIZE * sizeof(int*));
   for(h = 0; h < SIZE; h++){
-    //printf("MA");
     A[h] = (int*)malloc(SIZE *sizeof(int));
     B[h] = (int*)malloc(SIZE *sizeof(int));
     memset(A[h], h, SIZE*sizeof(int));
     memset(B[h], h, SIZE*sizeof(int));
   }
-  // fill in the matrices
-  /*for (i = 0; i < SIZE; i++) {
-    for (j = 0; j < SIZE; j++) {
-      A[i][j] = i;
-      B[i][j] = j;
-      printf("ST");
-    }
-  }
-*/
+  
   gettimeofday(&t_start,NULL);
 
   int a = 0, b = 0, c = 1, d = 1;
@@ -51,12 +40,13 @@ int main(int argc, char* argv[]) {
   for (i = 0; i < SIZE; i++) {
     for (j = 0; j < SIZE; j++) {
       for (k = 0; k < SIZE; k++) {
-        //printf("LO");
-        sum += A[k][0] * 53 * B[k][0];
-        a = 53 * sum;
-        b = a * a;
-        c = b * c * b*c*32423*b*c*c*c;
-        d  = b * c * b*c*32423*b*d*d;
+        for(l = 0; l < SIZE; l++){
+          sum += A[l][0] * 53 * B[l][0];
+            a = 53 * sum;
+            b = a * a;
+            c = b * c * b*c*32423*b*c*c*c;
+            d  = b * c * b*c*32423*b*d*d;
+        }
       }
     }
   }
