@@ -63,32 +63,6 @@ void LoadStride::updateTopStrideValues(long value) {
   }
 }
 
-void LoadStride::updateTopStrideDifferenceValues(long value) {
-  long count = strideDifferencesToCount[value];
-  for (int i = 0; i < topStrideDifferenceValues.size(); i++) {
-    if (topStrideDifferenceValues[i].first == value) {
-      topStrideDifferenceValues[i].second = count;
-      return;
-    }
-  }
-  if (topStrideDifferenceValues.size() < LoadStride::TOPCOUNT) {
-    topStrideDifferenceValues.push_back(make_pair(value, count));
-    return;
-  }
-  map<long, long>::iterator itStart, itEnd;
-  long lowest_found = (topStrideDifferenceValues.begin())->second;
-  int location = 0; 
-  for (int i = 1; i < topStrideDifferenceValues.size(); i++) {
-    if (topStrideDifferenceValues[i].second < lowest_found) {
-      lowest_found = topStrideDifferenceValues[i].second;
-      location = i;
-    }
-  }
-  if (count > lowest_found) {
-    topStrideDifferenceValues[location] = make_pair(value, count);
-  }
-}
-
 void LoadStride::addAddress(uint64_t addr) {
   if (lastAddress == -1) {
     lastAddress = addr;
@@ -128,13 +102,6 @@ void LoadStride::addAddress(uint64_t addr) {
   if (strideDifference == 0) {
     strideZeroDifferenceCount++;
   }
-  strideDifferences.push_back(strideDifference);
-  if (strideDifferencesToCount.count(strideDifference)) {
-    strideDifferencesToCount[strideDifference]++;
-  } else {
-    strideDifferencesToCount[strideDifference] = 1;
-  }
-  updateTopStrideDifferenceValues(strideDifference);
 }
 
 

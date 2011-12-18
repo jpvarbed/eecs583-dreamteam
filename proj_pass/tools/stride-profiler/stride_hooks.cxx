@@ -110,17 +110,12 @@ void Stride_print_stats(ofstream &stream) {
 }
 
 /***** functions *****/
-void Stride_init(uint32_t num_instrs, uint32_t num_loops, uint64_t mem_gran, uint64_t flags) {
+void Stride_init() {
     stride_params.stride_out = new ofstream("result.stride.profile");
     
 		if (sizeof(timestamp_t) != sizeof(uint64_t)) {
         fprintf(stderr, "sizeof(timestamp_t) != sizeof(uint64_t) (%lu != %lu)\n", sizeof(timestamp_t), sizeof(uint64_t));
         abort();
-    }
-
-    if (num_instrs >= INSTR_MAX) {
-      cerr<<"Number of instructions too high"<<num_instrs<<" >= "<<INSTR_MAX<<endl;
-      abort();
     }
 
     stride_stats.start_time = clock();

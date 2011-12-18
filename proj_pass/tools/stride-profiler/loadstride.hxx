@@ -30,10 +30,6 @@ class LoadStride {
       return &topStrideHolder; // pair of <value, count>
     }
 
-    vector< pair<long, long> > *getTopStrideDifferenceValues() {
-      return &topStrideDifferenceValues;
-    }
- 
     uint32_t getLoadID() {
       return loadID;
     }
@@ -64,18 +60,14 @@ class LoadStride {
     long lastAddress;
 
     vector<long> strideValues;
-    vector<long> strideDifferences;
     map<long, long> strideValuesToCount;
-    map<long, long> strideDifferencesToCount;
     unsigned long strideZeroCount;
     unsigned long strideZeroDifferenceCount;
 
     vector< pair<long, long> > topStrideValues;
-    vector< pair<long, long> > topStrideDifferenceValues;
 
     pair<long, long> topStrideHolder;
     
     void updateTopStrideValues(long);
-    void updateTopStrideDifferenceValues(long);
 };
 #endif

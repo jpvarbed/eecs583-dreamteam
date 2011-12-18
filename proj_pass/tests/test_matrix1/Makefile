@@ -17,7 +17,7 @@ default:
 	 llc correct.profile.bc -o correct.profile.s # prepares the assembly to be compiled
 	 g++ -o correct.profile correct.profile.s ${LLVMDIR}/Release/lib/profile_rt.so # compiles the assembly into binary which will be used to produce edge profiling information
 	 -./correct.profile ${s} > output_profile # executed to produce the edge profiling information
-	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -stride-insts -profile-loader -profile-info-file=llvmprof.out -insert-stride-profiling -insert-stride-init < correct.ls.bc > correct.stride.bc
+	 opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -profile-loader -profile-info-file=llvmprof.out -insert-stride-profiling -insert-stride-init < correct.ls.bc > correct.stride.bc
 	 opt -mem2reg correct.stride.bc -o correct.stride.mem2reg.bc # runs mem2reg pass on the stride bitcode and outputs new modified bitcode
 	 llvm-dis correct.stride.mem2reg.bc -o correct.stride.mem2reg.ll # llvm-dis converts the llvm bitcode file into human-readable llvm assembly language
 	 llc correct.stride.mem2reg.bc -o correct.stride.s # compiles the mem2reg modified bitcode file to assembly
