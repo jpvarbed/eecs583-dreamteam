@@ -46,6 +46,7 @@
 #  define DEBUG(x)    
 #endif                
 
+//#define K_SEARCH
 using namespace std;
 using namespace llvm;
 
@@ -472,7 +473,9 @@ void StridePrefetch::insertLoad(Instruction *inst) {
     K = MEMORY_LATENCY / total_loop_insts_exec;
   }
   K = min(K, (double)8);
-
+#ifdef K_SEARCH
+  K = CHANGE_K_FLAG;
+#endif
   double dataArea = profData->dominant_stride * profData->trip_count;
 
   errs() << "K: " << K << "\n";
