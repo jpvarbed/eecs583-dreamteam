@@ -26,7 +26,7 @@
 #define TT 100
 #define SSST_T  0.70
 #define PMST_T  0.60
-#define PMSTD_T 0.40
+#define PMSTD_T 0.35
 #define WSST_T  0.25
 #define WSSTD_T 0.10
 #define MAXPREFETCHDISTANCE 4

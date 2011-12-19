@@ -53,10 +53,10 @@ int main(int argc, char* argv[]) {
     for (j = 0; j < SIZE; j++) {
       for (k = 0; k < SIZE; k++) {
         //printf("LO");
-        if(k < (double).41*SIZE)
-            loadAmt = 0;
-        else if(k <(double).65*SIZE)
+        if(k < (double).30*SIZE)
             loadAmt = k;
+        else if(k%3==1)
+            loadAmt = 0;
         else
             loadAmt = k%2;
         sum += A[loadAmt][0] * 53 * B[loadAmt][0];
