@@ -1,2 +1,12 @@
 EECS 583 Project
 Matthew Viscomi, Patryk Mastela, Jason Varbedian
+
+There are two passes to the code. The first pass profiles the loads in the code. The second pass uses the first pass's results to instrument the code with prefetch instructions.
+
+To run the profiler, instrument the code with the code with the pass as follows:
+  opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -profile-loader -profile-info-file=llvmprof.out -insert-stride-profiling -insert-stride-init < correct.ls.bc > correct.stride.bc
+
+  In the code of the file lib/StrideProfiling.cpp, lines 141 - 150 can be modified to change the chunking of stride profiling on the addresses.
+
+Then run the executable to actually do the profiling. To read in the data and do the second pass, do the following:
+  opt -load ${PROJDIR}/Debug+Asserts/lib/projpass.so -stride-load-profile -profile-loader -profile-info-file=llvmprof.out -projpass correct.ls.bc > correct.prefetch.bc
